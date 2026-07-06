@@ -9,37 +9,69 @@ document.addEventListener("DOMContentLoaded", () => {
   const fmtInt = v => Math.round(Number(v || 0)).toLocaleString();
   const fmtPct = v => Number(v || 0).toFixed(2) + "%";
 
-  function score(summary){
-    let s = 100;
-    if(summary.ctr < 1) s -= 24; else if(summary.ctr < 1.5) s -= 14; else if(summary.ctr < 2) s -= 6;
-    if(summary.cpc > 2) s -= 18; else if(summary.cpc > 1) s -= 8;
-    if(summary.cost_per_conversion > 50) s -= 18; else if(summary.cost_per_conversion > 30) s -= 8;
-    return Math.max(0, Math.min(100, Math.round(s)));
-  }
-
-  function health(s){
-    if(s >= 88) return "Excellent";
-    if(s >= 74) return "Strong";
-    if(s >= 60) return "Stable";
-    return "Needs Attention";
-  }
+  function parseDate(s){ return new Date(s + "T00:00:00"); }
+  function iso(d){ return d.toISOString().slice(0,10); }
 
   function latestDate(rows){
     return rows.reduce((max, r) => !max || r.date > max ? r.date : max, null);
   }
 
-  function filterDays(days, offsetPeriods = 0){
+  function monthStart(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+  function monthEnd(d){ return new Date(d.getFullYear(), d.getMonth() + 1, 0); }
+
+  function rangeFromSelection(){
     const rows = data.daily || [];
-    const endStr = latestDate(rows);
-    if(!endStr) return [];
-    const end = new Date(endStr + "T00:00:00");
-    end.setDate(end.getDate() - (days * offsetPeriods));
-    const start = new Date(end);
-    start.setDate(start.getDate() - days + 1);
-    return rows.filter(r => {
-      const d = new Date(r.date + "T00:00:00");
+    const latest = latestDate(rows);
+    const select = document.getElementById("dateRange");
+    const value = select ? select.value : "30";
+    const customWrap = document.getElementById("customDateWrap");
+    if(customWrap) customWrap.style.display = value === "custom" ? "flex" : "none";
+
+    if(!latest) return {start:null, end:null, label:"No data"};
+
+    const endBase = parseDate(latest);
+    let start, end, label;
+
+    if(value === "this_month"){
+      start = monthStart(endBase);
+      end = endBase;
+      label = "This month";
+    } else if(value === "last_month"){
+      const lastMonth = new Date(endBase.getFullYear(), endBase.getMonth() - 1, 1);
+      start = monthStart(lastMonth);
+      end = monthEnd(lastMonth);
+      label = "Last month";
+    } else if(value === "custom"){
+      const cs = document.getElementById("customStart")?.value;
+      const ce = document.getElementById("customEnd")?.value;
+      start = cs ? parseDate(cs) : new Date(endBase.getFullYear(), endBase.getMonth(), 1);
+      end = ce ? parseDate(ce) : endBase;
+      label = `${iso(start)} to ${iso(end)}`;
+    } else {
+      const days = Number(value || 30);
+      end = endBase;
+      start = new Date(end);
+      start.setDate(start.getDate() - days + 1);
+      label = days === 365 ? "Last 12 months" : `Last ${days} days`;
+    }
+
+    return {start, end, label};
+  }
+
+  function filterByRange(start, end){
+    if(!start || !end) return [];
+    return (data.daily || []).filter(r => {
+      const d = parseDate(r.date);
       return d >= start && d <= end;
     });
+  }
+
+  function previousRange(start, end){
+    const ms = end - start;
+    const prevEnd = new Date(start);
+    prevEnd.setDate(prevEnd.getDate() - 1);
+    const prevStart = new Date(prevEnd.getTime() - ms);
+    return {start: prevStart, end: prevEnd};
   }
 
   function summarise(rows){
@@ -57,26 +89,38 @@ document.addEventListener("DOMContentLoaded", () => {
     return sum;
   }
 
-  function compareText(current, previous, type){
-    if(!previous && previous !== 0) return "";
-    const diff = current - previous;
-    const pct = previous ? (diff / previous) * 100 : 0;
-    const up = diff >= 0;
-    const cls = up ? "up" : "down";
-    if(type === "cost") return `<span class="${cls}">${up ? "▲" : "▼"} ${Math.abs(pct).toFixed(1)}%</span> vs previous`;
-    return `<span class="${cls}">${up ? "▲" : "▼"} ${Math.abs(pct).toFixed(1)}%</span> vs previous`;
+  function score(summary){
+    let s = 100;
+    if(summary.ctr < 1) s -= 24; else if(summary.ctr < 1.5) s -= 14; else if(summary.ctr < 2) s -= 6;
+    if(summary.cpc > 2) s -= 18; else if(summary.cpc > 1) s -= 8;
+    if(summary.cost_per_conversion > 50) s -= 18; else if(summary.cost_per_conversion > 30) s -= 8;
+    return Math.max(0, Math.min(100, Math.round(s)));
+  }
+
+  function health(s){
+    if(s >= 88) return "Excellent";
+    if(s >= 74) return "Strong";
+    if(s >= 60) return "Stable";
+    return "Needs Attention";
+  }
+
+  function compareText(current, previous){
+    if(!previous) return "";
+    const pct = ((current - previous) / previous) * 100;
+    const up = pct >= 0;
+    return `<span class="${up ? "up" : "down"}">${up ? "▲" : "▼"} ${Math.abs(pct).toFixed(1)}%</span> vs previous`;
   }
 
   function updateKpis(summary, previous, compare){
     const map = {
-      spend: [fmtEuro(summary.spend), summary.spend, previous.spend, "money"],
-      conversions: [fmtInt(summary.conversions), summary.conversions, previous.conversions, "number"],
-      cost_per_conversion: [fmtEuro(summary.cost_per_conversion), summary.cost_per_conversion, previous.cost_per_conversion, "cost"],
-      ctr: [fmtPct(summary.ctr), summary.ctr, previous.ctr, "pct"],
-      cpc: [fmtEuro(summary.cpc), summary.cpc, previous.cpc, "cost"],
-      reach: [fmtInt(summary.reach), summary.reach, previous.reach, "number"],
-      impressions: [fmtInt(summary.impressions), summary.impressions, previous.impressions, "number"],
-      clicks: [fmtInt(summary.clicks), summary.clicks, previous.clicks, "number"]
+      spend: [fmtEuro(summary.spend), summary.spend, previous.spend],
+      conversions: [fmtInt(summary.conversions), summary.conversions, previous.conversions],
+      cost_per_conversion: [fmtEuro(summary.cost_per_conversion), summary.cost_per_conversion, previous.cost_per_conversion],
+      ctr: [fmtPct(summary.ctr), summary.ctr, previous.ctr],
+      cpc: [fmtEuro(summary.cpc), summary.cpc, previous.cpc],
+      reach: [fmtInt(summary.reach), summary.reach, previous.reach],
+      impressions: [fmtInt(summary.impressions), summary.impressions, previous.impressions],
+      clicks: [fmtInt(summary.clicks), summary.clicks, previous.clicks]
     };
 
     Object.entries(map).forEach(([key, values]) => {
@@ -84,7 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if(!card) return;
       card.querySelector(".kpi-value").textContent = values[0];
       const c = card.querySelector(".kpi-compare");
-      c.innerHTML = compare ? compareText(values[1], values[2], values[3]) : "";
+      if(c) c.innerHTML = compare ? compareText(values[1], values[2]) : "";
     });
 
     const s = score(summary);
@@ -128,14 +172,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function refresh(){
-    const days = Number(document.getElementById("dateRange").value || 30);
-    const compare = document.getElementById("compareToggle").checked;
-    const rows = filterDays(days, 0);
-    const prevRows = filterDays(days, 1);
+    const range = rangeFromSelection();
+    const rows = filterByRange(range.start, range.end);
+    const prev = previousRange(range.start, range.end);
+    const prevRows = filterByRange(prev.start, prev.end);
     const summary = summarise(rows);
     const previous = summarise(prevRows);
+    const compare = document.getElementById("compareToggle").checked;
 
-    document.getElementById("rangeLabel").textContent = `Last ${days === 365 ? "12 months" : days + " days"}`;
+    document.getElementById("rangeLabel").textContent = range.label;
     updateKpis(summary, previous, compare);
     renderTrend(rows, prevRows, compare);
     renderSpend();
@@ -148,17 +193,17 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  const search = document.getElementById("campaignSearch");
-  if(search){
-    search.addEventListener("input", () => {
-      const q = search.value.toLowerCase();
-      document.querySelectorAll("#campaignTable tbody tr").forEach(row => {
-        row.style.display = row.innerText.toLowerCase().includes(q) ? "" : "none";
-      });
+  document.getElementById("campaignSearch")?.addEventListener("input", e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll("#campaignTable tbody tr").forEach(row => {
+      row.style.display = row.innerText.toLowerCase().includes(q) ? "" : "none";
     });
-  }
+  });
 
   document.getElementById("dateRange")?.addEventListener("change", refresh);
   document.getElementById("compareToggle")?.addEventListener("change", refresh);
+  document.getElementById("customStart")?.addEventListener("change", refresh);
+  document.getElementById("customEnd")?.addEventListener("change", refresh);
+
   refresh();
 });

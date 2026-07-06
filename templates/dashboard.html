@@ -50,10 +50,21 @@
             <option value="7">Last 7 days</option>
             <option value="30" selected>Last 30 days</option>
             <option value="90">Last 90 days</option>
-            <option value="180">Last 180 days</option>
+            <option value="this_month">This month</option>
+            <option value="last_month">Last month</option>
             <option value="365">Last 12 months</option>
+            <option value="custom">Custom range</option>
           </select>
-          <label class="compare-toggle"><input type="checkbox" id="compareToggle"> Compare previous period</label>
+
+          <div id="customDateWrap" class="custom-date-wrap">
+            <input type="date" id="customStart">
+            <input type="date" id="customEnd">
+          </div>
+
+          <label class="compare-toggle">
+            <input type="checkbox" id="compareToggle">
+            Compare previous period
+          </label>
         </div>
       </section>
 
@@ -82,7 +93,7 @@
           <canvas id="trendChart"></canvas>
         </article>
         <article class="panel">
-          <div class="panel-header"><h3>Campaign Spend Share</h3><p>Last 30 days by campaign.</p></div>
+          <div class="panel-header"><h3>Campaign Spend Share</h3><p>Latest 30 days by campaign.</p></div>
           <canvas id="campaignSpendChart"></canvas>
         </article>
       </section>
@@ -113,11 +124,11 @@
       </section>
 
       <section id="creatives" class="panel">
-        <div class="panel-header"><h3>Creative Performance</h3><p>Ad creative thumbnails shown alongside delivery and conversion data.</p></div>
+        <div class="panel-header"><h3>Creative Performance</h3><p>Ad creative images shown alongside delivery and conversion data.</p></div>
         <div class="creative-grid">
           {% for c in creatives %}
           <article class="creative-card">
-            <div class="creative-thumb">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" alt="Creative thumbnail">{% endif %}</div>
+            <div class="creative-thumb">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" alt="Creative image">{% endif %}</div>
             <div class="creative-content">
               <h4>{{ c.ad_name }}</h4>
               <div class="metric-row">
