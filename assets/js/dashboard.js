@@ -82,14 +82,43 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function aggregateCreatives(rows){
+    const sourceRows = (rows && rows.length) ? rows : (data.creatives || []);
     const map = {};
-    rows.forEach(r => {
+    sourceRows.forEach(r => {
       const key = r.ad_id || r.ad_name;
-      if(!map[key]) map[key] = {ad_id:r.ad_id,ad_name:r.ad_name,status:r.status,thumbnail:r.thumbnail,media_type:r.media_type,spend:0,conversions:0,clicks:0,impressions:0,reach:0,cpc:0,ctr:0};
+      if(!map[key]) {
+        map[key] = {
+          ad_id:r.ad_id,
+          ad_name:r.ad_name,
+          status:r.status,
+          thumbnail:r.thumbnail,
+          media_type:r.media_type || "image",
+          spend:0,
+          conversions:0,
+          clicks:0,
+          impressions:0,
+          reach:0,
+          cpc:0,
+          ctr:0
+        };
+      }
       const a = map[key];
-      a.spend += Number(r.spend||0); a.conversions += Number(r.conversions||0); a.clicks += Number(r.clicks||0); a.impressions += Number(r.impressions||0); a.reach += Number(r.reach||0);
+      a.spend += Number(r.spend||0);
+      a.conversions += Number(r.conversions||0);
+      a.clicks += Number(r.clicks||0);
+      a.impressions += Number(r.impressions||0);
+      a.reach += Number(r.reach||0);
     });
-    return Object.values(map).map(a => ({...a, ctr:a.impressions?(a.clicks/a.impressions)*100:0, cpc:a.clicks?a.spend/a.clicks:0, cost_per_conversion:a.conversions?a.spend/a.conversions:0})).filter(a=>a.spend>0).sort((a,b)=>(b.conversions-a.conversions)||(b.spend-a.spend)).slice(0,12);
+    return Object.values(map)
+      .map(a => ({
+        ...a,
+        ctr:a.impressions?(a.clicks/a.impressions)*100:Number(a.ctr||0),
+        cpc:a.clicks?a.spend/a.clicks:Number(a.cpc||0),
+        cost_per_conversion:a.conversions?a.spend/a.conversions:Number(a.cost_per_conversion||0)
+      }))
+      .filter(a => a.spend > 0 || a.thumbnail)
+      .sort((a,b)=>(b.conversions-a.conversions)||(b.spend-a.spend))
+      .slice(0,12);
   }
 
   function score(summary){
@@ -152,7 +181,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderCreatives(creatives){
     const grid=document.getElementById("creativeGrid"); if(!grid)return;
-    grid.innerHTML = creatives.map(c => `<article class="creative-card"><div class="creative-thumb">${c.thumbnail?`<img src="${c.thumbnail}" alt="Creative media">`:""}${c.media_type==="video"?`<div class="video-badge">Video</div>`:""}</div><div class="creative-content"><h4>${c.ad_name||""}</h4><div class="metric-row"><span>Spend <strong>${fmtEuro(c.spend)}</strong></span><span>${data.conversionName} <strong>${fmtInt(c.conversions)}</strong></span><span>CTR <strong>${fmtPct(c.ctr)}</strong></span><span>CPC <strong>${fmtEuro(c.cpc)}</strong></span></div></div></article>`).join("");
+    grid.innerHTML = creatives.length ? creatives.map(c => `<article class="creative-card"><div class="creative-thumb">${c.thumbnail?`<img src="${c.thumbnail}" alt="Creative media">`:""}${c.media_type==="video"?`<div class="video-badge">Video</div>`:""}</div><div class="creative-content"><h4>${c.ad_name||""}</h4><div class="metric-row"><span>Spend <strong>${fmtEuro(c.spend)}</strong></span><span>${data.conversionName} <strong>${fmtInt(c.conversions)}</strong></span><span>CTR <strong>${fmtPct(c.ctr)}</strong></span><span>CPC <strong>${fmtEuro(c.cpc)}</strong></span></div></div></article>`).join("") : `<div class="empty-state">No creative previews were returned by Meta for this selected period.</div>`;
   }
 
   function renderRecommendations(summary, campaigns, creatives){
@@ -177,7 +206,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const prevRange=previousRange(range.start,range.end);
     const prevRows=filterRows(data.daily,prevRange.start,prevRange.end);
     const campaigns=aggregateCampaigns(filterRows(data.campaignDaily,range.start,range.end));
-    const creatives=aggregateCreatives(filterRows(data.creativeDaily,range.start,range.end));
+    const creatives=aggregateCreatives(filterRows(data.creativeDaily || [],range.start,range.end));
     const summary=summarise(rows);
     const previous=summarise(prevRows);
     const compare=document.getElementById("compareToggle").checked;
