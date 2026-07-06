@@ -3,6 +3,8 @@ name: Build Meta Report
 on:
   workflow_dispatch:
 
+  schedule:
+    - cron: "0 6 2 * *"
 jobs:
   build-meta-report:
     runs-on: ubuntu-latest
