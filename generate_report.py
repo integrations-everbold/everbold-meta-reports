@@ -1,7 +1,7 @@
 import json
 import shutil
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from jinja2 import Environment, FileSystemLoader
 
 ROOT = Path(__file__).parent
@@ -12,11 +12,14 @@ OUTPUT_DIR = ROOT / "reports"
 
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-def euro(value):
+def safe_float(value):
     try:
-        return f"€{float(value):,.2f}"
+        return float(value)
     except Exception:
-        return "€0.00"
+        return 0.0
+
+def euro(value):
+    return f"€{safe_float(value):,.2f}"
 
 def integer(value):
     try:
@@ -25,16 +28,31 @@ def integer(value):
         return "0"
 
 def percent(value):
-    try:
-        return f"{float(value):.2f}%"
-    except Exception:
-        return "0.00%"
+    return f"{safe_float(value):.2f}%"
 
-def safe_float(value):
-    try:
-        return float(value)
-    except Exception:
-        return 0.0
+def filter_last_days(daily, days):
+    if not daily:
+        return []
+    end = max(datetime.strptime(d["date"], "%Y-%m-%d").date() for d in daily)
+    start = end - timedelta(days=days - 1)
+    return [d for d in daily if start <= datetime.strptime(d["date"], "%Y-%m-%d").date() <= end]
+
+def summarise_daily(daily):
+    spend = sum(safe_float(d.get("spend")) for d in daily)
+    conversions = sum(safe_float(d.get("conversions")) for d in daily)
+    clicks = sum(safe_float(d.get("clicks")) for d in daily)
+    impressions = sum(safe_float(d.get("impressions")) for d in daily)
+    reach = sum(safe_float(d.get("reach")) for d in daily)
+    return {
+        "spend": round(spend, 2),
+        "conversions": conversions,
+        "clicks": clicks,
+        "impressions": impressions,
+        "reach": reach,
+        "ctr": round((clicks / impressions) * 100, 2) if impressions else 0,
+        "cpc": round(spend / clicks, 2) if clicks else 0,
+        "cost_per_conversion": round(spend / conversions, 2) if conversions else 0
+    }
 
 def score(summary):
     s = 100
@@ -61,14 +79,14 @@ def health(score_value):
 
 def build_kpis(summary, conversion_name):
     return [
-        {"label": "Spend", "value": euro(summary.get("spend", 0)), "note": "Meta ad spend"},
-        {"label": conversion_name, "value": integer(summary.get("conversions", 0)), "note": "Primary conversion"},
-        {"label": f"Cost / {conversion_name}", "value": euro(summary.get("cost_per_conversion", 0)), "note": "Acquisition cost"},
-        {"label": "CTR", "value": percent(summary.get("ctr", 0)), "note": "Click-through rate"},
-        {"label": "CPC", "value": euro(summary.get("cpc", 0)), "note": "Cost per click"},
-        {"label": "Reach", "value": integer(summary.get("reach", 0)), "note": "Unique reach"},
-        {"label": "Impressions", "value": integer(summary.get("impressions", 0)), "note": "Ad impressions"},
-        {"label": "Clicks", "value": integer(summary.get("clicks", 0)), "note": "Total clicks"},
+        {"key": "spend", "label": "Spend", "value": euro(summary.get("spend", 0)), "note": "Meta ad spend"},
+        {"key": "conversions", "label": conversion_name, "value": integer(summary.get("conversions", 0)), "note": "Primary conversion"},
+        {"key": "cost_per_conversion", "label": f"Cost / {conversion_name}", "value": euro(summary.get("cost_per_conversion", 0)), "note": "Acquisition cost"},
+        {"key": "ctr", "label": "CTR", "value": percent(summary.get("ctr", 0)), "note": "Click-through rate"},
+        {"key": "cpc", "label": "CPC", "value": euro(summary.get("cpc", 0)), "note": "Cost per click"},
+        {"key": "reach", "label": "Reach", "value": integer(summary.get("reach", 0)), "note": "Unique reach"},
+        {"key": "impressions", "label": "Impressions", "value": integer(summary.get("impressions", 0)), "note": "Ad impressions"},
+        {"key": "clicks", "label": "Clicks", "value": integer(summary.get("clicks", 0)), "note": "Total clicks"},
     ]
 
 def executive_summary(client, summary, conversion_name):
@@ -78,30 +96,22 @@ def executive_summary(client, summary, conversion_name):
     ctr = safe_float(summary.get("ctr", 0))
     return (
         f"{client['name']} generated {conv:,} {conversion_name} from {euro(spend)} in Meta spend. "
-        f"The average cost per {conversion_name.lower()} was {euro(cpa)}, with a CTR of {ctr:.2f}%. "
-        f"This report highlights the strongest campaigns, creative performance, and priority actions for the next period."
+        f"The average cost per {conversion_name.lower()} was {euro(cpa)}, with a CTR of {ctr:.2f}%."
     )
 
 def recommendations(summary, campaigns, conversion_name):
     items = []
-    campaigns = campaigns or []
     active = [c for c in campaigns if safe_float(c.get("spend", 0)) > 0]
     if active:
         best = sorted(active, key=lambda c: (safe_float(c.get("conversions", 0)), -safe_float(c.get("cost_per_conversion", 999999))), reverse=True)[0]
         items.append(f"Scale the strongest campaign: {best.get('name','Campaign')} delivered {integer(best.get('conversions',0))} {conversion_name} at {euro(best.get('cost_per_conversion',0))}.")
-        costly = sorted(active, key=lambda c: safe_float(c.get("cost_per_conversion", 0)), reverse=True)[0]
-        if safe_float(costly.get("cost_per_conversion", 0)) > safe_float(summary.get("cost_per_conversion", 0)) and safe_float(costly.get("conversions", 0)) > 0:
-            items.append(f"Review {costly.get('name','Campaign')} because its cost per {conversion_name.lower()} is above the account average.")
     if safe_float(summary.get("ctr", 0)) < 1.5:
         items.append("CTR is below the preferred benchmark. Prioritise creative testing and stronger opening hooks.")
     else:
         items.append("CTR is in a healthy range. Continue refreshing creative variations to avoid fatigue.")
-    if safe_float(summary.get("conversions", 0)) == 0:
-        items.append("No primary conversions were recorded in this period. Confirm conversion tracking and campaign objectives.")
-    return items[:4]
+    return items
 
 def top_creatives(creatives, limit=12):
-    creatives = creatives or []
     active = [c for c in creatives if safe_float(c.get("spend", 0)) > 0]
     return sorted(active, key=lambda c: (safe_float(c.get("conversions", 0)), safe_float(c.get("spend", 0))), reverse=True)[:limit]
 
@@ -113,27 +123,25 @@ def copy_assets():
         shutil.copytree(ASSETS_DIR, dest)
 
 def main():
-    if not DATA_FILE.exists():
-        raise FileNotFoundError("data/report.json not found. Run fetch_meta.py first.")
-
     report = json.loads(DATA_FILE.read_text(encoding="utf-8"))
     env = Environment(loader=FileSystemLoader(TEMPLATE_DIR), autoescape=True)
     template = env.get_template("dashboard.html")
-
     copy_assets()
 
     index_links = []
-
     for client in report.get("clients", []):
         slug = client["slug"]
         conversion_name = client.get("conversion_name", "Conversions")
-        summary = client.get("summary", {})
+        daily_30 = filter_last_days(client.get("daily", []), 30)
+        summary = summarise_daily(daily_30) if daily_30 else client.get("summary", {})
         perf_score = score(summary)
 
         chart_data = {
             "daily": client.get("daily", []),
             "campaigns": client.get("campaigns", []),
-            "conversionName": conversion_name
+            "conversionName": conversion_name,
+            "clientName": client.get("name"),
+            "defaultDays": 30
         }
 
         html = template.render(
