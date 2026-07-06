@@ -21,6 +21,7 @@ def number(value):
 for client in clients:
     slug = client["slug"]
     name = client["name"]
+    conversion_name = client.get("primary_conversion_name", "Conversions")
 
     campaign_file = DATA_DIR / slug / "campaigns.json"
 
@@ -32,12 +33,12 @@ for client in clients:
         campaigns = json.load(f)
 
     total_spend = sum(c["spend"] for c in campaigns)
-    total_leads = sum(c["leads"] for c in campaigns)
+    total_conversions = sum(c["conversions"] for c in campaigns)
     total_clicks = sum(c["clicks"] for c in campaigns)
     total_impressions = sum(c["impressions"] for c in campaigns)
     total_reach = sum(c["reach"] for c in campaigns)
 
-    avg_cpl = total_spend / total_leads if total_leads else 0
+    avg_cost_per_conversion = total_spend / total_conversions if total_conversions else 0
     avg_ctr = (total_clicks / total_impressions * 100) if total_impressions else 0
     avg_cpc = total_spend / total_clicks if total_clicks else 0
 
@@ -49,8 +50,8 @@ for client in clients:
         <tr>
             <td>{c["campaign_name"]}</td>
             <td>{money(c["spend"])}</td>
-            <td>{number(c["leads"])}</td>
-            <td>{money(c["cpl"])}</td>
+            <td>{number(c["conversions"])}</td>
+            <td>{money(c["cost_per_conversion"])}</td>
             <td>{c["ctr"]:.2f}%</td>
             <td>{money(c["cpc"])}</td>
             <td>{number(c["reach"])}</td>
@@ -274,9 +275,9 @@ tr:hover {{
             <div class="summary-box">
                 <h3>Executive Summary</h3>
                 <p>
-                    {name} generated <strong>{number(total_leads)} leads</strong> from
+                    {name} generated <strong>{number(total_conversions)} {conversion_name}</strong> from
                     <strong>{money(total_spend)}</strong> in Meta ad spend, with an average
-                    cost per lead of <strong>{money(avg_cpl)}</strong>.
+                    cost per {conversion_name.lower()} of <strong>{money(avg_cost_per_conversion)}</strong>.
                 </p>
             </div>
         </div>
@@ -287,12 +288,12 @@ tr:hover {{
                 <div class="card-value">{money(total_spend)}</div>
             </div>
             <div class="card">
-                <div class="card-label">Leads</div>
-                <div class="card-value">{number(total_leads)}</div>
+                <div class="card-label">{conversion_name}</div>
+                <div class="card-value">{number(total_conversions)}</div>
             </div>
             <div class="card">
-                <div class="card-label">Cost per Lead</div>
-                <div class="card-value">{money(avg_cpl)}</div>
+                <div class="card-label">Cost per {conversion_name}</div>
+                <div class="card-value">{money(avg_cost_per_conversion)}</div>
             </div>
             <div class="card">
                 <div class="card-label">CTR</div>
@@ -311,8 +312,8 @@ tr:hover {{
                     <tr>
                         <th>Campaign</th>
                         <th>Spend</th>
-                        <th>Leads</th>
-                        <th>CPL</th>
+                        <th>{conversion_name}</th>
+                        <th>Cost per {conversion_name}</th>
                         <th>CTR</th>
                         <th>CPC</th>
                         <th>Reach</th>
