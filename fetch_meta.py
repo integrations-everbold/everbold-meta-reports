@@ -56,31 +56,13 @@ def number(value):
         return 0
 
 def best_creative_media(creative):
-    image_url = creative.get("image_url")
     thumbnail_url = creative.get("thumbnail_url")
-    story = creative.get("object_story_spec", {}) or {}
-    video_data = story.get("video_data", {}) or {}
-    link_data = story.get("link_data", {}) or {}
-    photo_data = story.get("photo_data", {}) or {}
-    video_id = video_data.get("video_id")
-    media_url = None
-    media_type = "image"
-
-    if video_id:
-        media_type = "video"
-        try:
-            thumbs = fetch_all_pages(f"{video_id}/thumbnails", {"fields": "uri,is_preferred"})
-            preferred = [v for v in thumbs if v.get("is_preferred")]
-            chosen = preferred[0] if preferred else (thumbs[0] if thumbs else None)
-            if chosen:
-                media_url = chosen.get("uri")
-        except Exception as e:
-            print("Video thumbnail fetch failed:", e)
-
-    if not media_url:
-        media_url = video_data.get("image_url") or link_data.get("picture") or link_data.get("image_url") or photo_data.get("url") or image_url or thumbnail_url
-
-    return {"media_url": media_url, "media_type": media_type, "thumbnail_url": thumbnail_url, "image_url": image_url}
+    return {
+        "media_url": thumbnail_url,
+        "media_type": "image",
+        "thumbnail_url": thumbnail_url,
+        "image_url": thumbnail_url
+    }
 
 def fetch_account_daily(client):
     conversion_type = client["primary_conversion_action_type"]
@@ -161,7 +143,7 @@ def fetch_creatives(client):
         "limit": 100,
         "fields": ",".join([
             "id","name","status",
-            "creative{id,name,thumbnail_url,image_url,object_story_spec,effective_object_story_id}",
+            "creative{id,name,thumbnail_url}",
             "insights.time_range(" + json.dumps(LAST_365_RANGE) + ").time_increment(1){date_start,spend,reach,impressions,clicks,ctr,cpc,cpm,actions}"
         ])
     })

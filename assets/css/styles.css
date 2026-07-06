@@ -190,3 +190,12 @@ h1{font-size:56px;line-height:.95;letter-spacing:-.055em;margin:0}h2{font-size:3
 
 /* Dynamic sections fix */
 .score-card{display:none!important}
+
+
+/* Restore creative media fallback */
+.creative-thumb:empty::after{
+  content:"Creative preview unavailable";
+  color:#777;
+  font-size:13px;
+  font-weight:800;
+}
