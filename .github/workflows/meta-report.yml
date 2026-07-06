@@ -31,7 +31,12 @@ jobs:
           META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
         run: python fetch_timeseries.py
 
-      - name: Generate report
+      - name: Fetch creative data
+        env:
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+        run: python fetch_creatives.py
+
+      - name: Generate premium report
         run: python generate_report.py
 
       - name: Upload generated report
