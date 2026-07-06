@@ -1,1 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{CLIENT_NAME}} Meta Report</title>
 
+  <link rel="stylesheet" href="../../assets/css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">E</div>
+        <div>
+          <div class="brand-name">EVERBOLD</div>
+          <div class="brand-subtitle">Marketing Report</div>
+        </div>
+      </div>
+
+      <nav>
+        <a href="#overview" class="nav-link active">Overview</a>
+        <a href="#campaigns" class="nav-link">Campaigns</a>
+        <a href="#creatives" class="nav-link">Creatives</a>
+        <a href="#insights" class="nav-link">Summary</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <section id="overview" class="hero">
+        <div>
+          <p class="eyebrow">Meta Advertising Report</p>
+          <h1>{{CLIENT_NAME}}</h1>
+          <p class="subtext">Last 30 days · Generated {{GENERATED_DATE}}</p>
+        </div>
+
+        <div class="report-controls">
+          <button class="control active">Last 30 Days</button>
+          <button class="control">Compare Previous Period</button>
+        </div>
+      </section>
+
+      <section class="summary-panel">
+        <div>
+          <p class="eyebrow">Executive Summary</p>
+          <h2>{{SUMMARY_TITLE}}</h2>
+          <p>{{SUMMARY_TEXT}}</p>
+        </div>
+      </section>
+
+      <section class="kpi-grid">
+        {{KPI_CARDS}}
+      </section>
+
+      <section class="chart-grid">
+        <div class="panel large">
+          <div class="panel-header">
+            <h3>Spend & Lead Form Trend</h3>
+            <p>Daily performance across the selected period.</p>
+          </div>
+          <canvas id="trendChart"></canvas>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Spend Distribution</h3>
+            <p>Campaign share of spend.</p>
+          </div>
+          <canvas id="spendChart"></canvas>
+        </div>
+      </section>
+
+      <section id="campaigns" class="panel">
+        <div class="panel-header">
+          <h3>Campaign Performance</h3>
+          <p>Campaign-level spend, conversions and efficiency.</p>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Campaign</th>
+                <th>Spend</th>
+                <th>{{CONVERSION_NAME}}</th>
+                <th>Cost / {{CONVERSION_NAME}}</th>
+                <th>CTR</th>
+                <th>CPC</th>
+                <th>Reach</th>
+                <th>Impressions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{CAMPAIGN_ROWS}}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="creatives" class="panel">
+        <div class="panel-header">
+          <h3>Creative Performance</h3>
+          <p>Ad-level visuals and performance metrics.</p>
+        </div>
+
+        <div class="creative-grid">
+          {{CREATIVE_CARDS}}
+        </div>
+      </section>
+
+      <section id="insights" class="panel">
+        <div class="panel-header">
+          <h3>Strategic Summary</h3>
+          <p>Key observations from this reporting period.</p>
+        </div>
+
+        <div class="insight-list">
+          {{INSIGHT_ITEMS}}
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    window.REPORT_DATA = {{REPORT_DATA_JSON}};
+  </script>
+  <script src="../../assets/js/dashboard.js"></script>
+</body>
+</html>
