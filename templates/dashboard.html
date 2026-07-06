@@ -1,131 +1,279 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{{CLIENT_NAME}} Meta Report</title>
 
-  <link rel="stylesheet" href="../../assets/css/styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>{{ CLIENT_NAME }} | Everbold Reporting</title>
+
+<link rel="stylesheet" href="assets/css/styles.css">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
 
 <body>
-  <div class="app">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark">E</div>
-        <div>
-          <div class="brand-name">EVERBOLD</div>
-          <div class="brand-subtitle">Marketing Report</div>
-        </div>
-      </div>
 
-      <nav>
-        <a href="#overview" class="nav-link active">Overview</a>
-        <a href="#campaigns" class="nav-link">Campaigns</a>
-        <a href="#creatives" class="nav-link">Creatives</a>
-        <a href="#insights" class="nav-link">Summary</a>
-      </nav>
+<div class="layout">
+
+    <aside class="sidebar">
+
+        <div class="brand">
+
+            <div class="brand-logo">
+
+                E
+
+            </div>
+
+            <div>
+
+                <h2>EVERBOLD</h2>
+
+                <span>Marketing Reporting</span>
+
+            </div>
+
+        </div>
+
+        <nav>
+
+            <a href="#overview" class="active">Overview</a>
+
+            <a href="#campaigns">Campaigns</a>
+
+            <a href="#creatives">Creatives</a>
+
+            <a href="#organic">Organic</a>
+
+            <a href="#recommendations">Recommendations</a>
+
+        </nav>
+
     </aside>
 
-    <main class="main">
-      <section id="overview" class="hero">
-        <div>
-          <p class="eyebrow">Meta Advertising Report</p>
-          <h1>{{CLIENT_NAME}}</h1>
-          <p class="subtext">Last 30 days · Generated {{GENERATED_DATE}}</p>
-        </div>
+    <main>
 
-        <div class="report-controls">
-          <button class="control active">Last 30 Days</button>
-          <button class="control">Compare Previous Period</button>
-        </div>
-      </section>
+        <section id="overview" class="hero">
 
-      <section class="summary-panel">
-        <div>
-          <p class="eyebrow">Executive Summary</p>
-          <h2>{{SUMMARY_TITLE}}</h2>
-          <p>{{SUMMARY_TEXT}}</p>
-        </div>
-      </section>
+            <div>
 
-      <section class="kpi-grid">
-        {{KPI_CARDS}}
-      </section>
+                <span class="eyebrow">
 
-      <section class="chart-grid">
-        <div class="panel large">
-          <div class="panel-header">
-            <h3>Spend & Lead Form Trend</h3>
-            <p>Daily performance across the selected period.</p>
-          </div>
-          <canvas id="trendChart"></canvas>
-        </div>
+                    Meta Advertising Report
 
-        <div class="panel">
-          <div class="panel-header">
-            <h3>Spend Distribution</h3>
-            <p>Campaign share of spend.</p>
-          </div>
-          <canvas id="spendChart"></canvas>
-        </div>
-      </section>
+                </span>
 
-      <section id="campaigns" class="panel">
-        <div class="panel-header">
-          <h3>Campaign Performance</h3>
-          <p>Campaign-level spend, conversions and efficiency.</p>
-        </div>
+                <h1>
 
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Campaign</th>
-                <th>Spend</th>
-                <th>{{CONVERSION_NAME}}</th>
-                <th>Cost / {{CONVERSION_NAME}}</th>
-                <th>CTR</th>
-                <th>CPC</th>
-                <th>Reach</th>
-                <th>Impressions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {{CAMPAIGN_ROWS}}
-            </tbody>
-          </table>
-        </div>
-      </section>
+                    {{ CLIENT_NAME }}
 
-      <section id="creatives" class="panel">
-        <div class="panel-header">
-          <h3>Creative Performance</h3>
-          <p>Ad-level visuals and performance metrics.</p>
-        </div>
+                </h1>
 
-        <div class="creative-grid">
-          {{CREATIVE_CARDS}}
-        </div>
-      </section>
+                <p>
 
-      <section id="insights" class="panel">
-        <div class="panel-header">
-          <h3>Strategic Summary</h3>
-          <p>Key observations from this reporting period.</p>
-        </div>
+                    Generated {{ GENERATED_DATE }}
 
-        <div class="insight-list">
-          {{INSIGHT_ITEMS}}
-        </div>
-      </section>
+                </p>
+
+            </div>
+
+            <div class="score-card">
+
+                <div class="score">
+
+                    {{ PERFORMANCE_SCORE }}
+
+                </div>
+
+                <div>
+
+                    <strong>
+
+                        {{ PERFORMANCE_HEALTH }}
+
+                    </strong>
+
+                    <p>
+
+                        Overall Account Performance
+
+                    </p>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <section class="summary">
+
+            <h2>
+
+                {{ SUMMARY_TITLE }}
+
+            </h2>
+
+            <p>
+
+                {{ SUMMARY_TEXT }}
+
+            </p>
+
+        </section>
+
+        <section class="kpis">
+
+            {{ KPI_CARDS | safe }}
+
+        </section>
+
+        <section class="charts">
+
+            <div class="chart-card">
+
+                <h3>
+
+                    Spend vs {{ CONVERSION_NAME }}
+
+                </h3>
+
+                <canvas id="trendChart"></canvas>
+
+            </div>
+
+            <div class="chart-card">
+
+                <h3>
+
+                    Campaign Distribution
+
+                </h3>
+
+                <canvas id="campaignChart"></canvas>
+
+            </div>
+                  <section id="campaigns" class="section">
+
+            <div class="section-header">
+
+                <h2>Campaign Performance</h2>
+
+                <span>Last 30 Days</span>
+
+            </div>
+
+            <div class="table-wrapper">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Campaign</th>
+
+                            <th>Status</th>
+
+                            <th>Spend</th>
+
+                            <th>{{ CONVERSION_NAME }}</th>
+
+                            <th>Cost / {{ CONVERSION_NAME }}</th>
+
+                            <th>CTR</th>
+
+                            <th>CPC</th>
+
+                            <th>Reach</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {{ CAMPAIGN_ROWS | safe }}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+        <section id="creatives" class="section">
+
+            <div class="section-header">
+
+                <h2>Creative Performance</h2>
+
+                <span>Top Performing Ads</span>
+
+            </div>
+
+            <div class="creative-grid">
+
+                {{ CREATIVE_CARDS | safe }}
+
+            </div>
+
+        </section>
+
+        <section id="organic" class="section">
+
+            <div class="section-header">
+
+                <h2>Organic Performance</h2>
+
+                <span>Facebook & Instagram</span>
+
+            </div>
+
+            <div class="organic-grid">
+
+                {{ ORGANIC_CARDS | safe }}
+
+            </div>
+
+        </section>
+
+        <section id="recommendations" class="section">
+
+            <div class="section-header">
+
+                <h2>Strategic Recommendations</h2>
+
+                <span>Automatically Generated</span>
+
+            </div>
+
+            <div class="recommendation-grid">
+
+                {{ RECOMMENDATIONS | safe }}
+
+            </div>
+
+        </section>
+
     </main>
-  </div>
 
-  <script>
-    window.REPORT_DATA = {{REPORT_DATA_JSON}};
-  </script>
-  <script src="../../assets/js/dashboard.js"></script>
+</div>
+
+<script>
+
+const REPORT_DATA = {{ REPORT_DATA_JSON | safe }};
+
+</script>
+
+<script src="assets/js/dashboard.js"></script>
+
 </body>
+
 </html>
+
+        </section>
