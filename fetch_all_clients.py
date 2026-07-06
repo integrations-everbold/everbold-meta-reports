@@ -13,22 +13,24 @@ with open("clients.json", "r") as f:
     clients = json.load(f)
 
 
-def get_action_value(actions, action_types):
+def get_action_value(actions, target_action_type):
     if not actions:
         return 0
 
     for action in actions:
-        if action.get("action_type") in action_types:
+        if action.get("action_type") == target_action_type:
             try:
                 return float(action["value"])
             except:
                 return 0
+
     return 0
 
 
 for client in clients:
-
     print(f"Fetching {client['name']}")
+
+    conversion_action_type = client.get("primary_conversion_action_type", "lead")
 
     fields = ",".join([
         "campaign_name",
@@ -61,17 +63,11 @@ for client in clients:
     campaigns = []
 
     for row in raw.get("data", []):
-
         spend = float(row.get("spend", 0))
 
-        leads = get_action_value(
+        conversions = get_action_value(
             row.get("actions"),
-            [
-                "lead",
-                "onsite_conversion.lead_grouped",
-                "offsite_conversion.fb_pixel_lead",
-                "onsite_conversion.messaging_conversation_started_7d"
-            ]
+            conversion_action_type
         )
 
         campaigns.append({
@@ -84,8 +80,9 @@ for client in clients:
             "cpc": float(row.get("cpc", 0)),
             "cpm": float(row.get("cpm", 0)),
             "frequency": float(row.get("frequency", 0)),
-            "leads": leads,
-            "cpl": round(spend / leads, 2) if leads else 0
+            "conversion_name": client.get("primary_conversion_name", "Leads"),
+            "conversions": conversions,
+            "cost_per_conversion": round(spend / conversions, 2) if conversions else 0
         })
 
     out = OUTPUT_DIR / client["slug"]
