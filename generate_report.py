@@ -91,7 +91,6 @@ def main():
             recommendations=recommendations(summary, client.get("campaigns", []), conversion_name),
             performance_score=perf_score, performance_health=health(perf_score),
             campaigns=client.get("campaigns", []), creatives=client.get("creatives", [])[:12],
-            organic=client.get("organic", {"facebook": [], "instagram": []}),
             report_data_json=json.dumps(chart_data)
         )
         out = OUTPUT_DIR / client["slug"]
