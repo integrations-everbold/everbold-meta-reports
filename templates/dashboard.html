@@ -128,7 +128,7 @@
         <div class="creative-grid">
           {% for c in creatives %}
           <article class="creative-card">
-            <div class="creative-thumb">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" alt="Creative image">{% endif %}</div>
+            <div class="creative-thumb">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" alt="Creative media">{% endif %}{% if c.media_type == "video" %}<div class="video-badge">Video</div>{% endif %}</div>
             <div class="creative-content">
               <h4>{{ c.ad_name }}</h4>
               <div class="metric-row">

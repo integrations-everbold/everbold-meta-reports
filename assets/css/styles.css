@@ -164,3 +164,26 @@ h1{font-size:56px;line-height:.95;letter-spacing:-.055em;margin:0}h2{font-size:3
 }
 .kpi-compare .up{color:#15803d;font-weight:900}
 .kpi-compare .down{color:#b91c1c;font-weight:900}
+
+
+/* Creative media quality update */
+.creative-thumb{
+  background:#f6f6f6 !important;
+}
+.creative-thumb img{
+  image-rendering:auto !important;
+  backface-visibility:hidden !important;
+}
+.video-badge{
+  position:absolute;
+  top:12px;
+  right:12px;
+  background:rgba(15,15,15,.82);
+  color:#fff;
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
