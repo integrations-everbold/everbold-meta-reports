@@ -106,7 +106,7 @@
         <div class="table-wrap">
           <table id="campaignTable">
             <thead><tr><th>Campaign</th><th>Spend</th><th>{{ conversion_name }}</th><th>Cost / {{ conversion_name }}</th><th>CTR</th><th>CPC</th><th>Reach</th></tr></thead>
-            <tbody>
+            <tbody id="campaignBody">
               {% for c in campaigns %}
               <tr>
                 <td><strong>{{ c.name }}</strong><small>{{ c.status }}</small></td>
@@ -125,10 +125,10 @@
 
       <section id="creatives" class="panel">
         <div class="panel-header"><h3>Creative Performance</h3><p>Ad creative images shown alongside delivery and conversion data.</p></div>
-        <div class="creative-grid">
+        <div class="creative-grid" id="creativeGrid">
           {% for c in creatives %}
           <article class="creative-card">
-            <div class="creative-thumb">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" alt="Creative media">{% endif %}{% if c.media_type == "video" %}<div class="video-badge">Video</div>{% endif %}</div>
+            <div class="creative-thumb">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" alt="Creative image">{% endif %}</div>
             <div class="creative-content">
               <h4>{{ c.ad_name }}</h4>
               <div class="metric-row">
@@ -147,7 +147,7 @@
 
       <section id="actions" class="panel">
         <div class="panel-header"><h3>Strategic Recommendations</h3><p>Generated from performance patterns in the current reporting period.</p></div>
-        <div class="recommendation-grid">{% for item in recommendations %}<div class="recommendation-card"><span>✓</span><p>{{ item }}</p></div>{% endfor %}</div>
+        <div class="recommendation-grid" id="recommendationGrid">{% for item in recommendations %}<div class="recommendation-card"><span>✓</span><p>{{ item }}</p></div>{% endfor %}</div>
       </section>
     </main>
   </div>

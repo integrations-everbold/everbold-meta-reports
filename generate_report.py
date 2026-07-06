@@ -9,161 +9,95 @@ DATA_FILE = ROOT / "data" / "report.json"
 TEMPLATE_DIR = ROOT / "templates"
 ASSETS_DIR = ROOT / "assets"
 OUTPUT_DIR = ROOT / "reports"
-
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-def safe_float(value):
-    try:
-        return float(value)
-    except Exception:
-        return 0.0
+def safe_float(v):
+    try: return float(v)
+    except Exception: return 0.0
 
-def euro(value):
-    return f"€{safe_float(value):,.2f}"
-
-def integer(value):
-    try:
-        return f"{int(float(value)):,}"
-    except Exception:
-        return "0"
-
-def percent(value):
-    return f"{safe_float(value):.2f}%"
-
-def filter_last_days(daily, days):
-    if not daily:
-        return []
-    end = max(datetime.strptime(d["date"], "%Y-%m-%d").date() for d in daily)
-    start = end - timedelta(days=days - 1)
-    return [d for d in daily if start <= datetime.strptime(d["date"], "%Y-%m-%d").date() <= end]
-
-def summarise_daily(daily):
-    spend = sum(safe_float(d.get("spend")) for d in daily)
-    conversions = sum(safe_float(d.get("conversions")) for d in daily)
-    clicks = sum(safe_float(d.get("clicks")) for d in daily)
-    impressions = sum(safe_float(d.get("impressions")) for d in daily)
-    reach = sum(safe_float(d.get("reach")) for d in daily)
-    return {
-        "spend": round(spend, 2),
-        "conversions": conversions,
-        "clicks": clicks,
-        "impressions": impressions,
-        "reach": reach,
-        "ctr": round((clicks / impressions) * 100, 2) if impressions else 0,
-        "cpc": round(spend / clicks, 2) if clicks else 0,
-        "cost_per_conversion": round(spend / conversions, 2) if conversions else 0
-    }
+def euro(v): return f"€{safe_float(v):,.2f}"
+def integer(v):
+    try: return f"{int(float(v)):,}"
+    except Exception: return "0"
+def percent(v): return f"{safe_float(v):.2f}%"
 
 def score(summary):
     s = 100
-    ctr = safe_float(summary.get("ctr"))
-    cpc = safe_float(summary.get("cpc"))
-    cpa = safe_float(summary.get("cost_per_conversion"))
-    if ctr < 1: s -= 24
-    elif ctr < 1.5: s -= 14
-    elif ctr < 2: s -= 6
-    if cpc > 2: s -= 18
-    elif cpc > 1: s -= 8
-    if cpa > 50: s -= 18
-    elif cpa > 30: s -= 8
+    if safe_float(summary.get("ctr")) < 1: s -= 24
+    elif safe_float(summary.get("ctr")) < 1.5: s -= 14
+    elif safe_float(summary.get("ctr")) < 2: s -= 6
+    if safe_float(summary.get("cpc")) > 2: s -= 18
+    elif safe_float(summary.get("cpc")) > 1: s -= 8
+    if safe_float(summary.get("cost_per_conversion")) > 50: s -= 18
+    elif safe_float(summary.get("cost_per_conversion")) > 30: s -= 8
     return max(0, min(100, round(s)))
 
-def health(score_value):
-    if score_value >= 88:
-        return "Excellent"
-    if score_value >= 74:
-        return "Strong"
-    if score_value >= 60:
-        return "Stable"
+def health(s):
+    if s >= 88: return "Excellent"
+    if s >= 74: return "Strong"
+    if s >= 60: return "Stable"
     return "Needs Attention"
 
 def build_kpis(summary, conversion_name):
     return [
-        {"key": "spend", "label": "Spend", "value": euro(summary.get("spend", 0)), "note": "Meta ad spend"},
-        {"key": "conversions", "label": conversion_name, "value": integer(summary.get("conversions", 0)), "note": "Primary conversion"},
-        {"key": "cost_per_conversion", "label": f"Cost / {conversion_name}", "value": euro(summary.get("cost_per_conversion", 0)), "note": "Acquisition cost"},
-        {"key": "ctr", "label": "CTR", "value": percent(summary.get("ctr", 0)), "note": "Click-through rate"},
-        {"key": "cpc", "label": "CPC", "value": euro(summary.get("cpc", 0)), "note": "Cost per click"},
-        {"key": "reach", "label": "Reach", "value": integer(summary.get("reach", 0)), "note": "Unique reach"},
-        {"key": "impressions", "label": "Impressions", "value": integer(summary.get("impressions", 0)), "note": "Ad impressions"},
-        {"key": "clicks", "label": "Clicks", "value": integer(summary.get("clicks", 0)), "note": "Total clicks"},
+        {"key":"spend","label":"Spend","value":euro(summary.get("spend",0)),"note":"Meta ad spend"},
+        {"key":"conversions","label":conversion_name,"value":integer(summary.get("conversions",0)),"note":"Primary conversion"},
+        {"key":"cost_per_conversion","label":f"Cost / {conversion_name}","value":euro(summary.get("cost_per_conversion",0)),"note":"Acquisition cost"},
+        {"key":"ctr","label":"CTR","value":percent(summary.get("ctr",0)),"note":"Click-through rate"},
+        {"key":"cpc","label":"CPC","value":euro(summary.get("cpc",0)),"note":"Cost per click"},
+        {"key":"reach","label":"Reach","value":integer(summary.get("reach",0)),"note":"Unique reach"},
+        {"key":"impressions","label":"Impressions","value":integer(summary.get("impressions",0)),"note":"Ad impressions"},
+        {"key":"clicks","label":"Clicks","value":integer(summary.get("clicks",0)),"note":"Total clicks"},
     ]
 
 def executive_summary(client, summary, conversion_name):
-    conv = int(safe_float(summary.get("conversions", 0)))
-    spend = safe_float(summary.get("spend", 0))
-    cpa = safe_float(summary.get("cost_per_conversion", 0))
-    ctr = safe_float(summary.get("ctr", 0))
-    return (
-        f"{client['name']} generated {conv:,} {conversion_name} from {euro(spend)} in Meta spend. "
-        f"The average cost per {conversion_name.lower()} was {euro(cpa)}, with a CTR of {ctr:.2f}%."
-    )
+    return f"{client['name']} generated {integer(summary.get('conversions',0))} {conversion_name} from {euro(summary.get('spend',0))} in Meta spend. The average cost per {conversion_name.lower()} was {euro(summary.get('cost_per_conversion',0))}, with a CTR of {percent(summary.get('ctr',0))}."
 
 def recommendations(summary, campaigns, conversion_name):
-    items = []
-    active = [c for c in campaigns if safe_float(c.get("spend", 0)) > 0]
-    if active:
-        best = sorted(active, key=lambda c: (safe_float(c.get("conversions", 0)), -safe_float(c.get("cost_per_conversion", 999999))), reverse=True)[0]
-        items.append(f"Scale the strongest campaign: {best.get('name','Campaign')} delivered {integer(best.get('conversions',0))} {conversion_name} at {euro(best.get('cost_per_conversion',0))}.")
-    if safe_float(summary.get("ctr", 0)) < 1.5:
-        items.append("CTR is below the preferred benchmark. Prioritise creative testing and stronger opening hooks.")
-    else:
-        items.append("CTR is in a healthy range. Continue refreshing creative variations to avoid fatigue.")
-    return items
-
-def top_creatives(creatives, limit=12):
-    active = [c for c in creatives if safe_float(c.get("spend", 0)) > 0]
-    return sorted(active, key=lambda c: (safe_float(c.get("conversions", 0)), safe_float(c.get("spend", 0))), reverse=True)[:limit]
+    # initial only; JS updates dynamically from selected time range
+    return ["Use the date selector above to review performance by period.", "Prioritise spend towards campaigns with the strongest cost per conversion.", "Refresh creatives regularly to maintain CTR and reduce fatigue.", "Review campaigns with spend but limited conversion volume."]
 
 def copy_assets():
     dest = OUTPUT_DIR / "assets"
-    if dest.exists():
-        shutil.rmtree(dest)
-    if ASSETS_DIR.exists():
-        shutil.copytree(ASSETS_DIR, dest)
+    if dest.exists(): shutil.rmtree(dest)
+    if ASSETS_DIR.exists(): shutil.copytree(ASSETS_DIR, dest)
 
 def main():
     report = json.loads(DATA_FILE.read_text(encoding="utf-8"))
     env = Environment(loader=FileSystemLoader(TEMPLATE_DIR), autoescape=True)
     template = env.get_template("dashboard.html")
     copy_assets()
-
     index_links = []
+
     for client in report.get("clients", []):
-        slug = client["slug"]
         conversion_name = client.get("conversion_name", "Conversions")
-        daily_30 = filter_last_days(client.get("daily", []), 30)
-        summary = summarise_daily(daily_30) if daily_30 else client.get("summary", {})
+        summary = client.get("summary", {})
         perf_score = score(summary)
 
         chart_data = {
             "daily": client.get("daily", []),
             "campaigns": client.get("campaigns", []),
+            "campaignDaily": client.get("campaign_daily", []),
+            "creatives": client.get("creatives", []),
+            "creativeDaily": client.get("creative_daily", []),
             "conversionName": conversion_name,
-            "clientName": client.get("name"),
-            "defaultDays": 30
+            "clientName": client.get("name")
         }
 
         html = template.render(
-            client=client,
-            generated_date=datetime.now().strftime("%d %B %Y"),
-            conversion_name=conversion_name,
-            summary=summary,
-            kpis=build_kpis(summary, conversion_name),
+            client=client, generated_date=datetime.now().strftime("%d %B %Y"), conversion_name=conversion_name,
+            summary=summary, kpis=build_kpis(summary, conversion_name),
             executive_summary=executive_summary(client, summary, conversion_name),
             recommendations=recommendations(summary, client.get("campaigns", []), conversion_name),
-            performance_score=perf_score,
-            performance_health=health(perf_score),
-            campaigns=client.get("campaigns", []),
-            creatives=top_creatives(client.get("creatives", [])),
+            performance_score=perf_score, performance_health=health(perf_score),
+            campaigns=client.get("campaigns", []), creatives=client.get("creatives", [])[:12],
             organic=client.get("organic", {"facebook": [], "instagram": []}),
             report_data_json=json.dumps(chart_data)
         )
-
-        out = OUTPUT_DIR / slug
+        out = OUTPUT_DIR / client["slug"]
         out.mkdir(parents=True, exist_ok=True)
         (out / "index.html").write_text(html, encoding="utf-8")
-        index_links.append((client["name"], f"{slug}/"))
+        index_links.append((client["name"], f"{client['slug']}/"))
 
     index_html = "<!doctype html><html><head><meta charset='utf-8'><title>Everbold Reports</title><link rel='stylesheet' href='assets/css/styles.css'></head><body><main class='main standalone'><h1>Everbold Reports</h1><div class='link-list'>" + "".join([f"<a class='report-link' href='{href}'>{name}</a>" for name, href in index_links]) + "</div></main></body></html>"
     (OUTPUT_DIR / "index.html").write_text(index_html, encoding="utf-8")
