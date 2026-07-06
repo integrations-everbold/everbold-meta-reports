@@ -211,6 +211,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const previous=summarise(prevRows);
     const compare=document.getElementById("compareToggle").checked;
     document.getElementById("rangeLabel").textContent=range.label;
+    const spendLabel = document.getElementById("spendShareLabel");
+    if(spendLabel) spendLabel.textContent = `${range.label} by campaign`;
     updateKpis(summary,previous,compare);
     renderTrend(rows,prevRows,compare);
     renderSpend(campaigns);

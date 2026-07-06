@@ -159,49 +159,123 @@ def summarise_daily(daily):
 
 def fetch_creatives(client):
     conversion_type = client["primary_conversion_action_type"]
-    creatives = []
+
+    # Step 1: fetch ad metadata and thumbnails only.
+    ad_meta = {}
     try:
         ads = fetch_all_pages(f"{client['ad_account_id']}/ads", {
-            "limit": 100,
+            "limit": 200,
+            "fields": "id,name,status,creative{id,name,thumbnail_url}"
+        })
+        for ad in ads:
+            creative = ad.get("creative", {}) or {}
+            ad_meta[ad.get("id")] = {
+                "ad_id": ad.get("id"),
+                "ad_name": ad.get("name"),
+                "status": ad.get("status"),
+                "thumbnail": creative.get("thumbnail_url"),
+                "media_type": "image"
+            }
+    except Exception as e:
+        print("Ad metadata fetch skipped:", e)
+
+    # Step 2: fetch ad-level daily insights separately.
+    creative_daily = []
+    try:
+        rows = fetch_all_pages(f"{client['ad_account_id']}/insights", {
+            "level": "ad",
+            "time_increment": 1,
+            "time_range": json.dumps(LAST_365_RANGE),
             "fields": ",".join([
-                "id",
-                "name",
-                "status",
-                "creative{id,name,thumbnail_url}",
-                "insights.time_range(" + json.dumps(LAST_30_RANGE) + "){spend,reach,impressions,clicks,ctr,cpc,cpm,actions}"
+                "date_start",
+                "ad_id",
+                "ad_name",
+                "spend",
+                "reach",
+                "impressions",
+                "clicks",
+                "ctr",
+                "cpc",
+                "cpm",
+                "actions"
             ])
         })
     except Exception as e:
-        print("Creative fetch skipped:", e)
-        return [], []
+        print("Ad daily insights skipped:", e)
+        rows = []
 
-    for ad in ads:
-        rows = ad.get("insights", {}).get("data", []) or []
-        insight = rows[0] if rows else {}
-        creative = ad.get("creative", {}) or {}
-        spend = money(insight.get("spend"))
-        conversions = action_value(insight.get("actions"), conversion_type)
-        item = {
-            "ad_id": ad.get("id"),
-            "ad_name": ad.get("name"),
-            "status": ad.get("status"),
-            "thumbnail": creative.get("thumbnail_url"),
-            "media_type": "image",
+    for row in rows:
+        ad_id = row.get("ad_id")
+        meta = ad_meta.get(ad_id, {})
+        spend = money(row.get("spend"))
+        conversions = action_value(row.get("actions"), conversion_type)
+
+        creative_daily.append({
+            "date": row.get("date_start"),
+            "ad_id": ad_id,
+            "ad_name": row.get("ad_name") or meta.get("ad_name"),
+            "status": meta.get("status", "Active"),
+            "thumbnail": meta.get("thumbnail"),
+            "media_type": meta.get("media_type", "image"),
             "spend": spend,
-            "reach": number(insight.get("reach")),
-            "impressions": number(insight.get("impressions")),
-            "clicks": number(insight.get("clicks")),
-            "ctr": float(insight.get("ctr", 0)),
-            "cpc": money(insight.get("cpc")),
-            "cpm": money(insight.get("cpm")),
+            "reach": number(row.get("reach")),
+            "impressions": number(row.get("impressions")),
+            "clicks": number(row.get("clicks")),
+            "ctr": float(row.get("ctr", 0)),
+            "cpc": money(row.get("cpc")),
+            "cpm": money(row.get("cpm")),
             "conversions": conversions,
-            "cost_per_conversion": round(spend/conversions,2) if conversions else 0
-        }
-        if spend > 0:
-            creatives.append(item)
+            "cost_per_conversion": round(spend / conversions, 2) if conversions else 0
+        })
 
-    creatives = sorted(creatives, key=lambda x: (x["conversions"], x["spend"]), reverse=True)
-    return creatives, []
+    # Step 3: aggregate latest 30 days for initial creative cards.
+    latest_30_dates = set()
+    if creative_daily:
+        latest = max(d["date"] for d in creative_daily if d.get("date"))
+        end = datetime.strptime(latest, "%Y-%m-%d").date()
+        start = end - timedelta(days=29)
+        latest_30_dates = {
+            d["date"] for d in creative_daily
+            if d.get("date") and start <= datetime.strptime(d["date"], "%Y-%m-%d").date() <= end
+        }
+
+    acc = {}
+    for r in creative_daily:
+        if latest_30_dates and r.get("date") not in latest_30_dates:
+            continue
+        key = r.get("ad_id") or r.get("ad_name")
+        if key not in acc:
+            acc[key] = {
+                "ad_id": r.get("ad_id"),
+                "ad_name": r.get("ad_name"),
+                "status": r.get("status"),
+                "thumbnail": r.get("thumbnail"),
+                "media_type": r.get("media_type"),
+                "spend": 0,
+                "reach": 0,
+                "impressions": 0,
+                "clicks": 0,
+                "conversions": 0
+            }
+        a = acc[key]
+        a["spend"] += r.get("spend", 0)
+        a["reach"] += r.get("reach", 0)
+        a["impressions"] += r.get("impressions", 0)
+        a["clicks"] += r.get("clicks", 0)
+        a["conversions"] += r.get("conversions", 0)
+
+    creatives = []
+    for a in acc.values():
+        a["spend"] = round(a["spend"], 2)
+        a["ctr"] = round((a["clicks"] / a["impressions"]) * 100, 2) if a["impressions"] else 0
+        a["cpc"] = round(a["spend"] / a["clicks"], 2) if a["clicks"] else 0
+        a["cpm"] = round((a["spend"] / a["impressions"]) * 1000, 2) if a["impressions"] else 0
+        a["cost_per_conversion"] = round(a["spend"] / a["conversions"], 2) if a["conversions"] else 0
+        if a["spend"] > 0 or a.get("thumbnail"):
+            creatives.append(a)
+
+    creatives = sorted(creatives, key=lambda x: (x["conversions"], x["spend"]), reverse=True)[:12]
+    return creatives, creative_daily
 
 report = {"generated_at": datetime.utcnow().isoformat(), "available_range_days": 365, "clients": []}
 
