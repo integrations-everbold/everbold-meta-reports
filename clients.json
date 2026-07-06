@@ -4,6 +4,8 @@
     "name": "Total Hair Restoration",
     "ad_account_id": "act_1165932851772868",
     "brand_color": "#FF530D",
-    "logo": ""
+    "logo": "",
+    "primary_conversion_name": "Lead Form",
+    "primary_conversion_action_type": "lead"
   }
 ]
