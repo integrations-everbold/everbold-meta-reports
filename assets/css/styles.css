@@ -103,3 +103,99 @@ h1{font-size:56px;line-height:.95;letter-spacing:-.055em;margin:0}h2{font-size:3
 .kpi-compare{font-size:12px;margin-top:10px;color:#777;min-height:16px}
 .kpi-compare .up{color:#15803d;font-weight:900}
 .kpi-compare .down{color:#b91c1c;font-weight:900}
+
+
+/* ==========================================================
+   CREATIVE CARD FIX V2 - hard override
+   ========================================================== */
+
+.creative-grid{
+  align-items:stretch !important;
+}
+
+.creative-card{
+  display:flex !important;
+  flex-direction:column !important;
+  background:#fff !important;
+  border:1px solid #ececec !important;
+  border-radius:24px !important;
+  overflow:hidden !important;
+  box-shadow:0 12px 34px rgba(15,15,15,.06) !important;
+  min-height:0 !important;
+}
+
+.creative-thumb{
+  position:relative !important;
+  display:block !important;
+  height:240px !important;
+  width:100% !important;
+  background:#f5f5f5 !important;
+  overflow:hidden !important;
+  flex:0 0 auto !important;
+}
+
+.creative-thumb img{
+  position:static !important;
+  display:block !important;
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+  filter:none !important;
+  opacity:1 !important;
+  transform:none !important;
+}
+
+.creative-content{
+  position:static !important;
+  display:block !important;
+  z-index:5 !important;
+  background:#fff !important;
+  color:#0f0f0f !important;
+  padding:18px !important;
+  min-height:158px !important;
+  flex:1 0 auto !important;
+  border-top:1px solid #f0f0f0 !important;
+}
+
+.creative-content h4{
+  color:#0f0f0f !important;
+  font-size:15px !important;
+  line-height:1.25 !important;
+  margin:0 0 14px !important;
+  font-weight:850 !important;
+  display:-webkit-box !important;
+  -webkit-line-clamp:2 !important;
+  -webkit-box-orient:vertical !important;
+  overflow:hidden !important;
+}
+
+.metric-row{
+  display:grid !important;
+  grid-template-columns:1fr 1fr !important;
+  gap:10px !important;
+}
+
+.metric-row span{
+  display:block !important;
+  background:#fafafa !important;
+  border:1px solid #eeeeee !important;
+  border-radius:12px !important;
+  padding:10px !important;
+  color:#777 !important;
+  font-size:12px !important;
+  line-height:1.2 !important;
+}
+
+.metric-row strong{
+  display:block !important;
+  color:#0f0f0f !important;
+  font-size:15px !important;
+  font-weight:900 !important;
+  margin-top:5px !important;
+}
+
+@media(max-width:680px){
+  .creative-thumb{
+    height:210px !important;
+  }
+}

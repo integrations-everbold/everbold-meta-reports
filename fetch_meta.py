@@ -181,7 +181,7 @@ def fetch_creatives(client):
                     "id",
                     "name",
                     "status",
-                    "creative{id,name,thumbnail_url}",
+                    "creative{id,name,thumbnail_url,image_url}",
                     "insights.time_range(" + json.dumps(LAST_30_RANGE) + "){spend,reach,impressions,clicks,ctr,cpc,cpm,actions}"
                 ])
             }
@@ -200,7 +200,7 @@ def fetch_creatives(client):
                 "ad_id": ad.get("id"),
                 "ad_name": ad.get("name"),
                 "status": ad.get("status"),
-                "thumbnail": creative.get("thumbnail_url"),
+                "thumbnail": creative.get("image_url") or creative.get("thumbnail_url"),
                 "creative_name": creative.get("name"),
                 "spend": spend,
                 "reach": number(insight.get("reach")),
