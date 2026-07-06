@@ -1,1 +1,1 @@
-
+document.addEventListener('DOMContentLoaded',()=>{console.log('Everbold Reporting v1');});

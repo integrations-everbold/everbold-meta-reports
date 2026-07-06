@@ -1,1 +1,7 @@
-
+:root{--primary:#FF530D;--bg:#FCFCFC;--text:#0F0F0F;--border:#ECECEC}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+.app{display:grid;grid-template-columns:280px 1fr;min-height:100vh}.sidebar{background:#111;color:#fff;padding:32px}
+.main{padding:40px}.card,.panel{background:#fff;border:1px solid var(--border);border-radius:22px;padding:24px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
+.chart-grid{display:grid;grid-template-columns:2fr 1fr;gap:20px}
+.creative-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
