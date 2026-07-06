@@ -2,343 +2,825 @@ import json
 from pathlib import Path
 from datetime import datetime
 
-DATA_DIR = Path("data")
-OUTPUT_DIR = Path("docs/reports")
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+from jinja2 import Environment, FileSystemLoader
 
-with open("clients.json", "r") as f:
-    clients = json.load(f)
+# ==========================================================
+# EVERBOLD REPORTING
+# REPORT GENERATOR
+# PART 1
+# ==========================================================
+
+ROOT = Path(__file__).parent
+
+DATA_DIR = ROOT / "data"
+
+OUTPUT_DIR = ROOT / "reports"
+
+TEMPLATE_DIR = ROOT / "templates"
+
+OUTPUT_DIR.mkdir(exist_ok=True)
+
+REPORT_FILE = DATA_DIR / "report.json"
+
+env = Environment(
+    loader=FileSystemLoader(TEMPLATE_DIR),
+    autoescape=True
+)
+
+template = env.get_template("dashboard.html")
+
+# ----------------------------------------------------------
+# LOAD REPORT JSON
+# ----------------------------------------------------------
+
+with open(REPORT_FILE, "r", encoding="utf-8") as f:
+
+    REPORT = json.load(f)
+
+# ----------------------------------------------------------
+# HELPERS
+# ----------------------------------------------------------
+
+def euro(value):
+
+    return f"€{float(value):,.2f}"
+
+def integer(value):
+
+    return f"{int(value):,}"
+
+def percentage(value):
+
+    return f"{float(value):.2f}%"
+
+# ----------------------------------------------------------
+# KPI CARD
+# ----------------------------------------------------------
+
+def kpi_card(title, value, subtitle, colour="orange"):
+
+    return f"""
+    <div class="kpi-card">
+
+        <div class="kpi-top">
+
+            <div class="kpi-title">{title}</div>
+
+            <div class="kpi-dot {colour}"></div>
+
+        </div>
+
+        <div class="kpi-value">
+
+            {value}
+
+        </div>
+
+        <div class="kpi-subtitle">
+
+            {subtitle}
+
+        </div>
+
+    </div>
+    """
+
+# ----------------------------------------------------------
+# EXECUTIVE SUMMARY
+# ----------------------------------------------------------
+
+def build_summary(summary):
+
+    cpl = summary["cost_per_conversion"]
+
+    ctr = summary["ctr"]
+
+    spend = summary["spend"]
+
+    conversions = summary["conversions"]
+
+    text = []
+
+    text.append(
+        f"Meta advertising generated {int(conversions)} conversions "
+        f"from €{spend:,.2f} in ad spend."
+    )
+
+    text.append(
+        f"The average cost per conversion was €{cpl:.2f} "
+        f"with a click-through rate of {ctr:.2f}%."
+    )
+
+    if ctr >= 2:
+
+        text.append(
+            "Campaign engagement remains healthy and indicates that "
+            "creative messaging is resonating with the target audience."
+        )
+
+    else:
+
+        text.append(
+            "CTR remains below the desired benchmark and creative testing "
+            "should be prioritised."
+        )
+
+    return " ".join(text)
+
+print("Generating reports...")
+# ==========================================================
+# BUILD KPI SECTION
+# ==========================================================
+
+def build_kpis(summary):
+
+    cards = []
+
+    cards.append(
+        kpi_card(
+            "Spend",
+            euro(summary["spend"]),
+            "Meta advertising spend"
+        )
+    )
+
+    cards.append(
+        kpi_card(
+            "Conversions",
+            integer(summary["conversions"]),
+            "Primary conversion"
+        )
+    )
+
+    cards.append(
+        kpi_card(
+            "Cost / Conversion",
+            euro(summary["cost_per_conversion"]),
+            "Average acquisition cost"
+        )
+    )
+
+    cards.append(
+        kpi_card(
+            "CTR",
+            percentage(summary["ctr"]),
+            "Click Through Rate"
+        )
+    )
+
+    cards.append(
+        kpi_card(
+            "CPC",
+            euro(summary["cpc"]),
+            "Cost Per Click"
+        )
+    )
+
+    cards.append(
+        kpi_card(
+            "Reach",
+            integer(summary["reach"]),
+            "Accounts reached"
+        )
+    )
+
+    cards.append(
+        kpi_card(
+            "Impressions",
+            integer(summary["impressions"]),
+            "Ad impressions"
+        )
+    )
+
+    cards.append(
+        kpi_card(
+            "Clicks",
+            integer(summary["clicks"]),
+            "Link clicks"
+        )
+    )
+
+    return "\n".join(cards)
 
 
-def money(value):
-    return f"€{value:,.2f}"
+# ==========================================================
+# BUILD CHART DATA
+# ==========================================================
+
+def build_chart_data(daily):
+
+    return {
+
+        "labels": [
+            row["date"] for row in daily
+        ],
+
+        "spend": [
+            row["spend"] for row in daily
+        ],
+
+        "conversions": [
+            row["conversions"] for row in daily
+        ],
+
+        "cpc": [
+            row["cpc"] for row in daily
+        ],
+
+        "ctr": [
+            row["ctr"] for row in daily
+        ],
+
+        "cost_per_conversion": [
+            row["cost_per_conversion"] for row in daily
+        ]
+
+    }
 
 
-def number(value):
-    return f"{value:,.0f}"
+# ==========================================================
+# BUILD CAMPAIGN TABLE
+# ==========================================================
+
+def build_campaign_table(campaigns):
+
+    rows = []
+
+    for campaign in campaigns:
+
+        rows.append(f"""
+<tr>
+
+<td>{campaign['name']}</td>
+
+<td>{campaign['status']}</td>
+
+<td>{euro(campaign['spend'])}</td>
+
+<td>{integer(campaign['conversions'])}</td>
+
+<td>{euro(campaign['cost_per_conversion'])}</td>
+
+<td>{percentage(campaign['ctr'])}</td>
+
+<td>{euro(campaign['cpc'])}</td>
+
+<td>{integer(campaign['reach'])}</td>
+
+</tr>
+""")
+
+    return "\n".join(rows)
+    # ==========================================================
+# BUILD CREATIVE GALLERY
+# ==========================================================
+
+def build_creatives(creatives):
+
+    html = []
+
+    for creative in creatives:
+
+        thumb = creative.get("thumbnail") or ""
+
+        html.append(f"""
+<div class="creative-card">
+
+    <div class="creative-image">
+
+        <img src="{thumb}" loading="lazy">
+
+    </div>
+
+    <div class="creative-body">
+
+        <div class="creative-title">
+
+            {creative["ad_name"]}
+
+        </div>
+
+        <div class="creative-metrics">
+
+            <div><strong>Spend</strong><br>{euro(creative["spend"])}</div>
+
+            <div><strong>Conversions</strong><br>{integer(creative["conversions"])}</div>
+
+            <div><strong>CTR</strong><br>{percentage(creative["ctr"])}</div>
+
+            <div><strong>CPC</strong><br>{euro(creative["cpc"])}</div>
+
+        </div>
+
+    </div>
+
+</div>
+""")
+
+    return "\n".join(html)
 
 
-for client in clients:
-    slug = client["slug"]
-    name = client["name"]
-    conversion_name = client.get("primary_conversion_name", "Conversions")
+# ==========================================================
+# BUILD ORGANIC POSTS
+# ==========================================================
 
-    campaign_file = DATA_DIR / slug / "campaigns.json"
+def build_organic(posts):
 
-    if not campaign_file.exists():
-        print(f"No data found for {name}")
-        continue
+    cards = []
 
-    with open(campaign_file, "r") as f:
-        campaigns = json.load(f)
+    for platform in ["facebook", "instagram"]:
 
-    total_spend = sum(c["spend"] for c in campaigns)
-    total_conversions = sum(c["conversions"] for c in campaigns)
-    total_clicks = sum(c["clicks"] for c in campaigns)
-    total_impressions = sum(c["impressions"] for c in campaigns)
-    total_reach = sum(c["reach"] for c in campaigns)
+        for post in posts.get(platform, []):
 
-    avg_cost_per_conversion = total_spend / total_conversions if total_conversions else 0
-    avg_ctr = (total_clicks / total_impressions * 100) if total_impressions else 0
-    avg_cpc = total_spend / total_clicks if total_clicks else 0
+            cards.append(f"""
+<div class="organic-card">
 
-    campaigns_sorted = sorted(campaigns, key=lambda x: x["spend"], reverse=True)
+    <div class="organic-platform">
+        {platform.title()}
+    </div>
 
-    rows = ""
-    for c in campaigns_sorted:
-        rows += f"""
-        <tr>
-            <td>{c["campaign_name"]}</td>
-            <td>{money(c["spend"])}</td>
-            <td>{number(c["conversions"])}</td>
-            <td>{money(c["cost_per_conversion"])}</td>
-            <td>{c["ctr"]:.2f}%</td>
-            <td>{money(c["cpc"])}</td>
-            <td>{number(c["reach"])}</td>
-            <td>{number(c["impressions"])}</td>
-        </tr>
-        """
+    <div class="organic-message">
+        {post.get("message","")}
+    </div>
 
-    html = f"""
+    <div class="organic-metrics">
+
+        <span>👍 {post.get("likes",0)}</span>
+
+        <span>💬 {post.get("comments",0)}</span>
+
+        <span>↗ {post.get("shares",0)}</span>
+
+        <span>👁 {post.get("reach",0)}</span>
+
+    </div>
+
+</div>
+""")
+
+    return "\n".join(cards)
+
+
+# ==========================================================
+# BUILD CLIENT REPORT
+# ==========================================================
+
+for client in REPORT["clients"]:
+
+    summary = client["summary"]
+
+    html = template.render(
+
+        generated=datetime.now().strftime("%d %B %Y"),
+
+        client_name=client["name"],
+
+        brand_colour=client["brand_color"],
+
+        executive_summary=build_summary(summary),
+
+        kpis=build_kpis(summary),
+
+        chart_data=json.dumps(build_chart_data(client["daily"])),
+
+        campaign_rows=build_campaign_table(client["campaigns"]),
+
+        creative_cards=build_creatives(client["creatives"]),
+
+        organic_cards=build_organic(client["organic"])
+
+    )
+
+    output = OUTPUT_DIR / f'{client["slug"]}.html'
+
+    output.write_text(html, encoding="utf-8")
+
+    print("Generated:", output)
+
+print()
+print("All reports generated successfully.")
+        # ==========================================================
+# PERFORMANCE SCORE
+# ==========================================================
+
+def performance_score(summary):
+
+    score = 100
+
+    ctr = summary.get("ctr", 0)
+    cpc = summary.get("cpc", 0)
+    cpa = summary.get("cost_per_conversion", 0)
+
+    if ctr < 1:
+        score -= 25
+    elif ctr < 1.5:
+        score -= 15
+    elif ctr < 2:
+        score -= 5
+
+    if cpc > 2:
+        score -= 20
+    elif cpc > 1:
+        score -= 10
+
+    if cpa > 50:
+        score -= 20
+    elif cpa > 30:
+        score -= 10
+
+    return max(0, min(100, round(score)))
+
+
+# ==========================================================
+# BEST & WORST CAMPAIGNS
+# ==========================================================
+
+def campaign_rankings(campaigns):
+
+    if not campaigns:
+        return None, None
+
+    best = sorted(
+        campaigns,
+        key=lambda x: (
+            x["conversions"],
+            -x["cost_per_conversion"]
+        ),
+        reverse=True
+    )[0]
+
+    worst = sorted(
+        campaigns,
+        key=lambda x: (
+            x["cost_per_conversion"],
+            -x["conversions"]
+        ),
+        reverse=True
+    )[0]
+
+    return best, worst
+
+
+# ==========================================================
+# RECOMMENDATIONS
+# ==========================================================
+
+def build_recommendations(summary, campaigns):
+
+    recommendations = []
+
+    score = performance_score(summary)
+
+    if score >= 85:
+
+        recommendations.append(
+            "Overall account performance is strong. Focus on scaling the highest-performing campaigns while maintaining cost efficiency."
+        )
+
+    elif score >= 70:
+
+        recommendations.append(
+            "Performance is healthy, although further creative testing and audience optimisation could improve results."
+        )
+
+    else:
+
+        recommendations.append(
+            "Overall account performance requires optimisation. Review audience targeting, creatives and campaign structure."
+        )
+
+    best, worst = campaign_rankings(campaigns)
+
+    if best:
+
+        recommendations.append(
+            f"Top campaign: <strong>{best['name']}</strong> generated {int(best['conversions'])} conversions at €{best['cost_per_conversion']:.2f} per conversion."
+        )
+
+    if worst:
+
+        recommendations.append(
+            f"Review campaign <strong>{worst['name']}</strong> as it currently has the highest cost per conversion."
+        )
+
+    if summary["ctr"] < 1.5:
+
+        recommendations.append(
+            "CTR is below the preferred benchmark. Testing new creative concepts and headlines is recommended."
+        )
+
+    if summary["cost_per_conversion"] > 30:
+
+        recommendations.append(
+            "Cost per conversion is above target. Consider reallocating budget towards stronger campaigns."
+        )
+
+    html = []
+
+    for recommendation in recommendations:
+
+        html.append(f"""
+<div class="recommendation-card">
+
+    <div class="recommendation-icon">
+
+        ✓
+
+    </div>
+
+    <div class="recommendation-text">
+
+        {recommendation}
+
+    </div>
+
+</div>
+""")
+
+    return "\n".join(html)
+
+
+# ==========================================================
+# ACCOUNT HEALTH
+# ==========================================================
+
+def account_health(score):
+
+    if score >= 90:
+        return "Excellent"
+
+    if score >= 75:
+        return "Good"
+
+    if score >= 60:
+        return "Average"
+
+    return "Needs Attention"
+        # ==========================================================
+# PREPARE TEMPLATE DATA
+# ==========================================================
+
+def prepare_template(client):
+
+    summary = client["summary"]
+
+    score = performance_score(summary)
+
+    health = account_health(score)
+
+    chart_json = json.dumps(
+        build_chart_data(client["daily"])
+    )
+
+    return {
+
+        "CLIENT_NAME": client["name"],
+
+        "GENERATED_DATE": datetime.now().strftime("%d %B %Y"),
+
+        "SUMMARY_TITLE": f"{health} Performance",
+
+        "SUMMARY_TEXT": build_summary(summary),
+
+        "PERFORMANCE_SCORE": score,
+
+        "PERFORMANCE_HEALTH": health,
+
+        "CONVERSION_NAME": client["conversion_name"],
+
+        "KPI_CARDS": build_kpis(summary),
+
+        "CAMPAIGN_ROWS": build_campaign_table(
+            client["campaigns"]
+        ),
+
+        "CREATIVE_CARDS": build_creatives(
+            client["creatives"]
+        ),
+
+        "ORGANIC_CARDS": build_organic(
+            client["organic"]
+        ),
+
+        "RECOMMENDATIONS": build_recommendations(
+            summary,
+            client["campaigns"]
+        ),
+
+        "REPORT_DATA_JSON": chart_json
+
+    }
+
+
+# ==========================================================
+# RENDER HTML
+# ==========================================================
+
+def render_dashboard(client):
+
+    context = prepare_template(client)
+
+    html = template.render(**context)
+
+    output = OUTPUT_DIR / f"{client['slug']}.html"
+
+    output.write_text(
+        html,
+        encoding="utf-8"
+    )
+
+    print("Generated:", output)
+
+    return output
+
+
+# ==========================================================
+# GENERATE REPORTS
+# ==========================================================
+
+generated = []
+
+for client in REPORT["clients"]:
+
+    generated.append(
+        render_dashboard(client)
+    )
+        # ==========================================================
+# COPY STATIC ASSETS
+# ==========================================================
+
+import shutil
+
+ASSETS_SOURCE = ROOT / "assets"
+
+ASSETS_DESTINATION = OUTPUT_DIR / "assets"
+
+if ASSETS_DESTINATION.exists():
+    shutil.rmtree(ASSETS_DESTINATION)
+
+if ASSETS_SOURCE.exists():
+    shutil.copytree(
+        ASSETS_SOURCE,
+        ASSETS_DESTINATION
+    )
+
+# ==========================================================
+# INDEX PAGE
+# ==========================================================
+
+index = []
+
+index.append("""
 <!DOCTYPE html>
-<html lang="en">
+
+<html>
+
 <head>
-<meta charset="UTF-8">
-<title>{name} Meta Report</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta charset="utf-8">
+
+<title>Everbold Reporting</title>
+
 <style>
-:root {{
-    --orange: #ff530d;
-    --black: #0f0f0f;
-    --white: #fcfcfc;
-    --muted: #666;
-    --border: #ececec;
-}}
 
-* {{
-    box-sizing: border-box;
-}}
+body{
 
-body {{
-    margin: 0;
-    font-family: Inter, Arial, sans-serif;
-    background: var(--white);
-    color: var(--black);
-}}
+font-family:Arial;
 
-.layout {{
-    display: grid;
-    grid-template-columns: 260px 1fr;
-    min-height: 100vh;
-}}
+padding:60px;
 
-.sidebar {{
-    background: #0f0f0f;
-    color: white;
-    padding: 32px 24px;
-}}
+background:#fafafa;
 
-.brand {{
-    color: var(--orange);
-    font-size: 28px;
-    font-weight: 900;
-    letter-spacing: -1px;
-    margin-bottom: 48px;
-}}
+}
 
-.nav-item {{
-    padding: 14px 16px;
-    border-radius: 12px;
-    margin-bottom: 8px;
-    color: #d7d7d7;
-}}
+a{
 
-.nav-item.active {{
-    background: var(--orange);
-    color: white;
-}}
+display:block;
 
-.main {{
-    padding: 40px;
-}}
+padding:16px;
 
-.header {{
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 36px;
-}}
+margin-bottom:12px;
 
-.eyebrow {{
-    color: var(--orange);
-    font-weight: 700;
-    margin-bottom: 8px;
-}}
+border-radius:10px;
 
-h1 {{
-    font-size: 48px;
-    line-height: 1.05;
-    margin: 0;
-    letter-spacing: -2px;
-}}
+background:white;
 
-.subtext {{
-    color: var(--muted);
-    margin-top: 12px;
-}}
+text-decoration:none;
 
-.summary-box {{
-    background: linear-gradient(135deg, #fff4ef, #ffffff);
-    border: 1px solid var(--border);
-    border-radius: 24px;
-    padding: 28px;
-    max-width: 420px;
-}}
+color:#111;
 
-.summary-box h3 {{
-    margin-top: 0;
-}}
+border:1px solid #ddd;
 
-.kpis {{
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 18px;
-    margin-bottom: 32px;
-}}
+font-size:18px;
 
-.card {{
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 22px;
-    padding: 24px;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.04);
-}}
+}
 
-.card-label {{
-    color: var(--muted);
-    font-size: 13px;
-    margin-bottom: 14px;
-}}
-
-.card-value {{
-    font-size: 30px;
-    font-weight: 800;
-    letter-spacing: -1px;
-}}
-
-.section {{
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 24px;
-    padding: 28px;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.04);
-    margin-bottom: 28px;
-}}
-
-.section h2 {{
-    margin-top: 0;
-    font-size: 24px;
-}}
-
-table {{
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-}}
-
-th {{
-    text-align: left;
-    color: var(--muted);
-    font-weight: 600;
-    padding: 14px;
-    border-bottom: 1px solid var(--border);
-}}
-
-td {{
-    padding: 16px 14px;
-    border-bottom: 1px solid var(--border);
-}}
-
-tr:hover {{
-    background: #fff7f3;
-}}
-
-.footer {{
-    color: var(--muted);
-    font-size: 13px;
-    margin-top: 24px;
-}}
-
-@media (max-width: 1000px) {{
-    .layout {{
-        grid-template-columns: 1fr;
-    }}
-
-    .sidebar {{
-        display: none;
-    }}
-
-    .kpis {{
-        grid-template-columns: repeat(2, 1fr);
-    }}
-
-    .header {{
-        display: block;
-    }}
-
-    h1 {{
-        font-size: 38px;
-    }}
-}}
 </style>
+
 </head>
 
 <body>
-<div class="layout">
-    <aside class="sidebar">
-        <div class="brand">EVERBOLD</div>
-        <div class="nav-item active">Executive Summary</div>
-        <div class="nav-item">Campaign Performance</div>
-        <div class="nav-item">Creative Performance</div>
-        <div class="nav-item">Organic Performance</div>
-        <div class="nav-item">Recommendations</div>
-    </aside>
 
-    <main class="main">
-        <div class="header">
-            <div>
-                <div class="eyebrow">Meta Advertising Report</div>
-                <h1>{name}<br>Performance Report</h1>
-                <div class="subtext">Last 30 days · Generated {datetime.now().strftime("%d %B %Y")}</div>
-            </div>
+<h1>Everbold Reporting</h1>
 
-            <div class="summary-box">
-                <h3>Executive Summary</h3>
-                <p>
-                    {name} generated <strong>{number(total_conversions)} {conversion_name}</strong> from
-                    <strong>{money(total_spend)}</strong> in Meta ad spend, with an average
-                    cost per {conversion_name.lower()} of <strong>{money(avg_cost_per_conversion)}</strong>.
-                </p>
-            </div>
-        </div>
+<p>Select a client report.</p>
 
-        <div class="kpis">
-            <div class="card">
-                <div class="card-label">Spend</div>
-                <div class="card-value">{money(total_spend)}</div>
-            </div>
-            <div class="card">
-                <div class="card-label">{conversion_name}</div>
-                <div class="card-value">{number(total_conversions)}</div>
-            </div>
-            <div class="card">
-                <div class="card-label">Cost per {conversion_name}</div>
-                <div class="card-value">{money(avg_cost_per_conversion)}</div>
-            </div>
-            <div class="card">
-                <div class="card-label">CTR</div>
-                <div class="card-value">{avg_ctr:.2f}%</div>
-            </div>
-            <div class="card">
-                <div class="card-label">Reach</div>
-                <div class="card-value">{number(total_reach)}</div>
-            </div>
-        </div>
+""")
 
-        <div class="section">
-            <h2>Campaign Performance</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Campaign</th>
-                        <th>Spend</th>
-                        <th>{conversion_name}</th>
-                        <th>Cost per {conversion_name}</th>
-                        <th>CTR</th>
-                        <th>CPC</th>
-                        <th>Reach</th>
-                        <th>Impressions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows}
-                </tbody>
-            </table>
-        </div>
+for client in REPORT["clients"]:
 
-        <div class="footer">
-            Prepared by Everbold Reporting.
-        </div>
-    </main>
-</div>
+    index.append(
+
+        f'<a href="{client["slug"]}.html">{client["name"]}</a>'
+
+    )
+
+index.append("""
+
 </body>
+
 </html>
-"""
 
-    client_output = OUTPUT_DIR / slug
-    client_output.mkdir(parents=True, exist_ok=True)
+""")
 
-    with open(client_output / "index.html", "w") as f:
-        f.write(html)
+(
+    OUTPUT_DIR / "index.html"
+).write_text(
 
-    print(f"Generated report for {name}: {client_output / 'index.html'}")
+    "\n".join(index),
+
+    encoding="utf-8"
+
+)
+
+# ==========================================================
+# REPORT METADATA
+# ==========================================================
+
+metadata = {
+
+    "generated": datetime.now().isoformat(),
+
+    "client_count": len(REPORT["clients"]),
+
+    "reports": [
+
+        client["slug"]
+
+        for client in REPORT["clients"]
+
+    ]
+
+}
+
+with open(
+
+    OUTPUT_DIR / "metadata.json",
+
+    "w",
+
+    encoding="utf-8"
+
+) as f:
+
+    json.dump(
+
+        metadata,
+
+        f,
+
+        indent=2
+
+    )
+
+# ==========================================================
+# FINISHED
+# ==========================================================
+
+print()
+
+print("========================================")
+
+print("EVERBOLD REPORTING COMPLETE")
+
+print("========================================")
+
+print()
+
+print("Reports generated:")
+
+for report in generated:
+
+    print(report)
+
+print()
+
+print("Assets copied")
+
+print("Index created")
+
+print("Metadata created")
+
+print()
+
+print("Done.")
