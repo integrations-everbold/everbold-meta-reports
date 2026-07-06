@@ -162,7 +162,6 @@ def fetch_campaign_summary(client):
     fields = ",".join([
         "campaign_name",
         "campaign_id",
-        "campaign_status",
         "spend",
         "reach",
         "impressions",
@@ -205,7 +204,7 @@ def fetch_campaign_summary(client):
         campaign = {
             "id": row.get("campaign_id"),
             "name": row.get("campaign_name"),
-            "status": row.get("campaign_status"),
+            "status": "Active",
             "spend": spend,
             "reach": number(row.get("reach")),
             "impressions": number(row.get("impressions")),
