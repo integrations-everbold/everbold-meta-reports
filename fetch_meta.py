@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 
 API_VERSION = "v25.0"
 ACCESS_TOKEN = os.environ["META_ACCESS_TOKEN"]
-
 CLIENTS_FILE = Path("clients.json")
 OUTPUT_DIR = Path("data")
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -15,28 +14,23 @@ with open(CLIENTS_FILE, "r", encoding="utf-8") as f:
     CLIENTS = json.load(f)
 
 TODAY = datetime.utcnow().date()
-LAST_30_START = TODAY - timedelta(days=29)
-
 DATE_RANGE = {
-    "since": LAST_30_START.strftime("%Y-%m-%d"),
+    "since": (TODAY - timedelta(days=29)).strftime("%Y-%m-%d"),
     "until": TODAY.strftime("%Y-%m-%d")
 }
 
 def fetch_all_pages(endpoint, params=None):
     if params is None:
         params = {}
-
     params["access_token"] = ACCESS_TOKEN
     url = f"https://graph.facebook.com/{API_VERSION}/{endpoint}"
     results = []
 
     while url:
         response = requests.get(url, params=params)
-
         if not response.ok:
             print(response.text)
             response.raise_for_status()
-
         data = response.json()
         results.extend(data.get("data", []))
         url = data.get("paging", {}).get("next")
@@ -47,14 +41,12 @@ def fetch_all_pages(endpoint, params=None):
 def action_value(actions, action_type):
     if not actions:
         return 0
-
     for action in actions:
         if action.get("action_type") == action_type:
             try:
                 return float(action.get("value", 0))
             except Exception:
                 return 0
-
     return 0
 
 def money(value):
@@ -96,13 +88,7 @@ def fetch_campaigns(client):
     )
 
     campaigns = []
-    totals = {
-        "spend": 0,
-        "reach": 0,
-        "impressions": 0,
-        "clicks": 0,
-        "conversions": 0
-    }
+    totals = {"spend": 0, "reach": 0, "impressions": 0, "clicks": 0, "conversions": 0}
 
     for row in rows:
         spend = money(row.get("spend"))
@@ -126,57 +112,18 @@ def fetch_campaigns(client):
         }
 
         campaigns.append(campaign)
-
-        totals["spend"] += spend
+        totals["spend"] += campaign["spend"]
         totals["reach"] += campaign["reach"]
         totals["impressions"] += campaign["impressions"]
         totals["clicks"] += campaign["clicks"]
-        totals["conversions"] += conversions
+        totals["conversions"] += campaign["conversions"]
 
     totals["spend"] = round(totals["spend"], 2)
     totals["ctr"] = round((totals["clicks"] / totals["impressions"]) * 100, 2) if totals["impressions"] else 0
     totals["cpc"] = round(totals["spend"] / totals["clicks"], 2) if totals["clicks"] else 0
     totals["cost_per_conversion"] = round(totals["spend"] / totals["conversions"], 2) if totals["conversions"] else 0
 
-    campaigns = sorted(campaigns, key=lambda x: x["spend"], reverse=True)
-
-    return campaigns, totals
-
-def build_daily_from_campaigns(campaigns):
-    daily = []
-
-    for i in range(30):
-        date = LAST_30_START + timedelta(days=i)
-        daily.append({
-            "date": date.strftime("%Y-%m-%d"),
-            "spend": 0,
-            "conversions": 0,
-            "cost_per_conversion": 0,
-            "reach": 0,
-            "impressions": 0,
-            "clicks": 0,
-            "ctr": 0,
-            "cpc": 0,
-            "cpm": 0
-        })
-
-    # Stable fallback: place totals on the final day.
-    if campaigns:
-        last = daily[-1]
-        for c in campaigns:
-            last["spend"] += c.get("spend", 0)
-            last["conversions"] += c.get("conversions", 0)
-            last["reach"] += c.get("reach", 0)
-            last["impressions"] += c.get("impressions", 0)
-            last["clicks"] += c.get("clicks", 0)
-
-        last["spend"] = round(last["spend"], 2)
-        last["ctr"] = round((last["clicks"] / last["impressions"]) * 100, 2) if last["impressions"] else 0
-        last["cpc"] = round(last["spend"] / last["clicks"], 2) if last["clicks"] else 0
-        last["cpm"] = round((last["spend"] / last["impressions"]) * 1000, 2) if last["impressions"] else 0
-        last["cost_per_conversion"] = round(last["spend"] / last["conversions"], 2) if last["conversions"] else 0
-
-    return daily
+    return sorted(campaigns, key=lambda x: x["spend"], reverse=True), totals
 
 def fetch_creatives(client):
     conversion_type = client["primary_conversion_action_type"]
@@ -197,7 +144,7 @@ def fetch_creatives(client):
         )
     except Exception as e:
         print("Creative fetch skipped:", e)
-        return [], []
+        return []
 
     creatives = []
 
@@ -230,42 +177,28 @@ def fetch_creatives(client):
         if spend > 0 or item.get("thumbnail"):
             creatives.append(item)
 
-    creatives = sorted(
-        creatives,
-        key=lambda x: (x.get("conversions", 0), x.get("spend", 0)),
-        reverse=True
-    )[:12]
-
-    return creatives, []
+    return sorted(creatives, key=lambda x: (x.get("conversions", 0), x.get("spend", 0)), reverse=True)[:12]
 
 report = {
     "generated_at": datetime.utcnow().isoformat(),
-    "available_range_days": 30,
+    "period": "Last 30 days",
     "clients": []
 }
 
 for client in CLIENTS:
     print("Fetching", client["name"])
-
     campaigns, summary = fetch_campaigns(client)
-    daily = build_daily_from_campaigns(campaigns)
-    creatives, creative_daily = fetch_creatives(client)
+    creatives = fetch_creatives(client)
 
     report["clients"].append({
         "slug": client["slug"],
         "name": client["name"],
         "brand_color": client.get("brand_color"),
         "conversion_name": client["primary_conversion_name"],
+        "period": "Last 30 days",
         "summary": summary,
-        "daily": daily,
-        "campaign_daily": [],
         "campaigns": campaigns,
-        "creative_daily": creative_daily,
-        "creatives": creatives,
-        "organic": {
-            "facebook": [],
-            "instagram": []
-        }
+        "creatives": creatives
     })
 
 with open(OUTPUT_DIR / "report.json", "w", encoding="utf-8") as f:

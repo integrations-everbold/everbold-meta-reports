@@ -31,67 +31,36 @@
         <div>
           <div class="eyebrow">Meta Advertising Report</div>
           <h1>{{ client.name }}</h1>
-          <p class="muted"><span id="rangeLabel">Last 30 days</span> · Generated {{ generated_date }}</p>
-        </div>
-        <div class="score-card">
-          <div class="score-ring" id="scoreValue">{{ performance_score }}</div>
-          <div>
-            <strong id="scoreHealth">{{ performance_health }}</strong>
-            <span>Performance Score</span>
-          </div>
-        </div>
-      </section>
-
-      <section class="controls-card">
-        <div class="controls-row">
-          <label>Date Range</label>
-          <select id="dateRange">
-            <option value="7">Last 7 days</option>
-            <option value="30" selected>Last 30 days</option>
-            <option value="this_month">This month</option>
-            <option value="last_month">Last month</option>
-            <option value="custom">Custom range</option>
-          </select>
-
-          <div id="customDateWrap" class="custom-date-wrap">
-            <input type="date" id="customStart">
-            <input type="date" id="customEnd">
-          </div>
-
-          <label class="compare-toggle">
-            <input type="checkbox" id="compareToggle">
-            Compare previous period
-          </label>
+          <p class="muted">Last 30 days · Generated {{ generated_date }}</p>
         </div>
       </section>
 
       <section class="executive-card">
         <div>
           <div class="eyebrow">Executive Summary</div>
-          <h2 id="summaryTitle">{{ performance_health }} Meta Performance</h2>
-          <p id="summaryText">{{ executive_summary }}</p>
+          <h2>Meta Performance Summary</h2>
+          <p>{{ executive_summary }}</p>
         </div>
       </section>
 
       <section class="kpi-grid">
         {% for card in kpis %}
-        <article class="kpi-card" data-kpi="{{ card.key }}">
+        <article class="kpi-card">
           <div class="kpi-label">{{ card.label }}</div>
           <div class="kpi-value">{{ card.value }}</div>
           <div class="kpi-note">{{ card.note }}</div>
-          <div class="kpi-compare"></div>
         </article>
         {% endfor %}
       </section>
 
       <section id="charts" class="chart-grid">
         <article class="panel panel-large">
-          <div class="panel-header"><h3>Spend & {{ conversion_name }} Trend</h3><p>Daily movement across the selected range.</p></div>
-          <canvas id="trendChart"></canvas>
+          <div class="panel-header"><h3>Campaign Spend Share</h3><p>Spend distribution across campaigns for the last 30 days.</p></div>
+          <canvas id="campaignSpendChart"></canvas>
         </article>
         <article class="panel">
-          <div class="panel-header"><h3>Campaign Spend Share</h3><p id="spendShareLabel">Selected period by campaign.</p></div>
-          <canvas id="campaignSpendChart"></canvas>
+          <div class="panel-header"><h3>{{ conversion_name }} by Campaign</h3><p>Primary conversion volume by campaign.</p></div>
+          <canvas id="campaignConversionChart"></canvas>
         </article>
       </section>
 
@@ -102,8 +71,18 @@
         </div>
         <div class="table-wrap">
           <table id="campaignTable">
-            <thead><tr><th>Campaign</th><th>Spend</th><th>{{ conversion_name }}</th><th>Cost / {{ conversion_name }}</th><th>CTR</th><th>CPC</th><th>Reach</th></tr></thead>
-            <tbody id="campaignBody">
+            <thead>
+              <tr>
+                <th>Campaign</th>
+                <th>Spend</th>
+                <th>{{ conversion_name }}</th>
+                <th>Cost / {{ conversion_name }}</th>
+                <th>CTR</th>
+                <th>CPC</th>
+                <th>Reach</th>
+              </tr>
+            </thead>
+            <tbody>
               {% for c in campaigns %}
               <tr>
                 <td><strong>{{ c.name }}</strong><small>{{ c.status }}</small></td>
@@ -121,11 +100,11 @@
       </section>
 
       <section id="creatives" class="panel">
-        <div class="panel-header"><h3>Creative Performance</h3><p>Ad creative images shown alongside delivery and conversion data.</p></div>
-        <div class="creative-grid" id="creativeGrid">
+        <div class="panel-header"><h3>Creative Performance</h3><p>Top ad creative previews and performance metrics for the latest 30 days.</p></div>
+        <div class="creative-grid">
           {% for c in creatives %}
           <article class="creative-card">
-            <div class="creative-thumb">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" alt="Creative image">{% endif %}</div>
+            <div class="creative-thumb">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" alt="Creative preview">{% endif %}</div>
             <div class="creative-content">
               <h4>{{ c.ad_name }}</h4>
               <div class="metric-row">
@@ -141,8 +120,12 @@
       </section>
 
       <section id="actions" class="panel">
-        <div class="panel-header"><h3>Strategic Recommendations</h3><p>Generated from performance patterns in the current reporting period.</p></div>
-        <div class="recommendation-grid" id="recommendationGrid">{% for item in recommendations %}<div class="recommendation-card"><span>✓</span><p>{{ item }}</p></div>{% endfor %}</div>
+        <div class="panel-header"><h3>Strategic Recommendations</h3><p>Rule-based recommendations from the current reporting period.</p></div>
+        <div class="recommendation-grid">
+          {% for item in recommendations %}
+          <div class="recommendation-card"><span>✓</span><p>{{ item }}</p></div>
+          {% endfor %}
+        </div>
       </section>
     </main>
   </div>
