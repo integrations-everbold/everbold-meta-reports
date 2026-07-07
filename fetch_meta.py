@@ -14,8 +14,8 @@ with open(CLIENTS_FILE, "r", encoding="utf-8") as f:
     CLIENTS = json.load(f)
 
 TODAY = datetime.utcnow().date()
-LAST_365_RANGE = {
-    "since": (TODAY - timedelta(days=364)).strftime("%Y-%m-%d"),
+LAST_30_FETCH_RANGE = {
+    "since": (TODAY - timedelta(days=29)).strftime("%Y-%m-%d"),
     "until": TODAY.strftime("%Y-%m-%d")
 }
 LAST_30_RANGE = {
@@ -87,7 +87,7 @@ def fetch_campaign_daily(client):
         {
             "level": "campaign",
             "time_increment": 1,
-            "time_range": json.dumps(LAST_365_RANGE),
+            "time_range": json.dumps(LAST_30_FETCH_RANGE),
             "fields": fields
         }
     )
@@ -295,7 +295,7 @@ def fetch_creatives(client):
 
 report = {
     "generated_at": datetime.utcnow().isoformat(),
-    "available_range_days": 365,
+    "available_range_days": 30,
     "clients": []
 }
 
