@@ -42,7 +42,8 @@ def build_kpis(summary, conversion_name):
     ]
 
 def executive_summary(client, summary, conversion_name):
-    return f"{client['name']} generated {integer(summary.get('conversions',0))} {conversion_name} from {euro(summary.get('spend',0))} in Meta spend. The average cost per {conversion_name.lower()} was {euro(summary.get('cost_per_conversion',0))}, with a CTR of {percent(summary.get('ctr',0))}."
+    period = client.get("period", "Last month")
+    return f"For {period}, {client['name']} generated {integer(summary.get('conversions',0))} {conversion_name} from {euro(summary.get('spend',0))} in Meta spend. The average cost per {conversion_name.lower()} was {euro(summary.get('cost_per_conversion',0))}, with a CTR of {percent(summary.get('ctr',0))}."
 
 def recommendations(summary, campaigns, creatives, conversion_name):
     recs = []
@@ -60,8 +61,6 @@ def recommendations(summary, campaigns, creatives, conversion_name):
         recs.append("CTR is below the preferred benchmark. Test stronger opening hooks, clearer creative contrast and more direct lead-focused messaging.")
     else:
         recs.append("CTR is in a healthy range. Continue refreshing creative variations to avoid fatigue.")
-    if safe_float(summary.get("cpc",0)) > 1:
-        recs.append("CPC is elevated. Review audience overlap, placement mix and creative relevance.")
     return recs[:4]
 
 def copy_assets():
@@ -84,8 +83,10 @@ def main():
         summary = client.get("summary", {})
         campaigns = client.get("campaigns", [])
         creatives = client.get("creatives", [])
+        daily = client.get("daily", [])
 
         chart_data = {
+            "daily": daily,
             "campaigns": campaigns,
             "creatives": creatives,
             "conversionName": conversion_name,

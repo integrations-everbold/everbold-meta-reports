@@ -31,14 +31,14 @@
         <div>
           <div class="eyebrow">Meta Advertising Report</div>
           <h1>{{ client.name }}</h1>
-          <p class="muted">Last 30 days · Generated {{ generated_date }}</p>
+          <p class="muted">{{ client.period }} · Generated {{ generated_date }}</p>
         </div>
       </section>
 
       <section class="executive-card">
         <div>
           <div class="eyebrow">Executive Summary</div>
-          <h2>Meta Performance Summary</h2>
+          <h2>{{ client.period }} Meta Performance</h2>
           <p>{{ executive_summary }}</p>
         </div>
       </section>
@@ -55,18 +55,18 @@
 
       <section id="charts" class="chart-grid">
         <article class="panel panel-large">
-          <div class="panel-header"><h3>Campaign Spend Share</h3><p>Spend distribution across campaigns for the last 30 days.</p></div>
-          <canvas id="campaignSpendChart"></canvas>
+          <div class="panel-header"><h3>Spend & {{ conversion_name }} Trend</h3><p>Daily movement across {{ client.period }}.</p></div>
+          <canvas id="trendChart"></canvas>
         </article>
         <article class="panel">
-          <div class="panel-header"><h3>{{ conversion_name }} by Campaign</h3><p>Primary conversion volume by campaign.</p></div>
-          <canvas id="campaignConversionChart"></canvas>
+          <div class="panel-header"><h3>Campaign Spend Share</h3><p>Spend distribution across campaigns.</p></div>
+          <canvas id="campaignSpendChart"></canvas>
         </article>
       </section>
 
       <section id="campaigns" class="panel">
         <div class="panel-header split">
-          <div><h3>Campaign Performance</h3><p>Campaign-level performance for the latest 30 days.</p></div>
+          <div><h3>Campaign Performance</h3><p>Campaign-level performance for {{ client.period }}.</p></div>
           <input id="campaignSearch" class="search" placeholder="Search campaigns">
         </div>
         <div class="table-wrap">
@@ -100,7 +100,7 @@
       </section>
 
       <section id="creatives" class="panel">
-        <div class="panel-header"><h3>Creative Performance</h3><p>Top ad creative previews and performance metrics for the latest 30 days.</p></div>
+        <div class="panel-header"><h3>Creative Performance</h3><p>Top ad creative previews and performance metrics for {{ client.period }}.</p></div>
         <div class="creative-grid">
           {% for c in creatives %}
           <article class="creative-card">
@@ -120,7 +120,7 @@
       </section>
 
       <section id="actions" class="panel">
-        <div class="panel-header"><h3>Strategic Recommendations</h3><p>Rule-based recommendations from the current reporting period.</p></div>
+        <div class="panel-header"><h3>Strategic Recommendations</h3><p>Rule-based recommendations from {{ client.period }}.</p></div>
         <div class="recommendation-grid">
           {% for item in recommendations %}
           <div class="recommendation-card"><span>✓</span><p>{{ item }}</p></div>

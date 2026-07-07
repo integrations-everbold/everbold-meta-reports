@@ -2,7 +2,7 @@ import os
 import json
 import requests
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 API_VERSION = "v25.0"
 ACCESS_TOKEN = os.environ["META_ACCESS_TOKEN"]
@@ -13,11 +13,17 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 with open(CLIENTS_FILE, "r", encoding="utf-8") as f:
     CLIENTS = json.load(f)
 
-TODAY = datetime.utcnow().date()
+today = datetime.utcnow().date()
+first_this_month = today.replace(day=1)
+last_month_end = first_this_month - timedelta(days=1)
+last_month_start = last_month_end.replace(day=1)
+
 DATE_RANGE = {
-    "since": (TODAY - timedelta(days=29)).strftime("%Y-%m-%d"),
-    "until": TODAY.strftime("%Y-%m-%d")
+    "since": last_month_start.strftime("%Y-%m-%d"),
+    "until": last_month_end.strftime("%Y-%m-%d")
 }
+
+PERIOD_LABEL = last_month_start.strftime("%B %Y")
 
 def fetch_all_pages(endpoint, params=None):
     if params is None:
@@ -31,6 +37,7 @@ def fetch_all_pages(endpoint, params=None):
         if not response.ok:
             print(response.text)
             response.raise_for_status()
+
         data = response.json()
         results.extend(data.get("data", []))
         url = data.get("paging", {}).get("next")
@@ -61,6 +68,69 @@ def number(value):
     except Exception:
         return 0
 
+def summarise(rows):
+    spend = sum(row.get("spend", 0) for row in rows)
+    conversions = sum(row.get("conversions", 0) for row in rows)
+    clicks = sum(row.get("clicks", 0) for row in rows)
+    impressions = sum(row.get("impressions", 0) for row in rows)
+    reach = sum(row.get("reach", 0) for row in rows)
+
+    return {
+        "spend": round(spend, 2),
+        "conversions": conversions,
+        "clicks": clicks,
+        "impressions": impressions,
+        "reach": reach,
+        "ctr": round((clicks / impressions) * 100, 2) if impressions else 0,
+        "cpc": round(spend / clicks, 2) if clicks else 0,
+        "cost_per_conversion": round(spend / conversions, 2) if conversions else 0
+    }
+
+def fetch_daily_account(client):
+    conversion_type = client["primary_conversion_action_type"]
+
+    fields = ",".join([
+        "date_start",
+        "spend",
+        "reach",
+        "impressions",
+        "clicks",
+        "ctr",
+        "cpc",
+        "cpm",
+        "actions"
+    ])
+
+    rows = fetch_all_pages(
+        f"{client['ad_account_id']}/insights",
+        {
+            "level": "account",
+            "time_increment": 1,
+            "time_range": json.dumps(DATE_RANGE),
+            "fields": fields
+        }
+    )
+
+    daily = []
+    for row in rows:
+        spend = money(row.get("spend"))
+        conversions = action_value(row.get("actions"), conversion_type)
+
+        daily.append({
+            "date": row.get("date_start"),
+            "spend": spend,
+            "conversions": conversions,
+            "cost_per_conversion": round(spend / conversions, 2) if conversions else 0,
+            "reach": number(row.get("reach")),
+            "impressions": number(row.get("impressions")),
+            "clicks": number(row.get("clicks")),
+            "ctr": float(row.get("ctr", 0)),
+            "cpc": money(row.get("cpc")),
+            "cpm": money(row.get("cpm"))
+        })
+
+    return sorted(daily, key=lambda x: x["date"])
+
 def fetch_campaigns(client):
     conversion_type = client["primary_conversion_action_type"]
 
@@ -88,13 +158,11 @@ def fetch_campaigns(client):
     )
 
     campaigns = []
-    totals = {"spend": 0, "reach": 0, "impressions": 0, "clicks": 0, "conversions": 0}
-
     for row in rows:
         spend = money(row.get("spend"))
         conversions = action_value(row.get("actions"), conversion_type)
 
-        campaign = {
+        campaigns.append({
             "id": row.get("campaign_id"),
             "campaign_id": row.get("campaign_id"),
             "name": row.get("campaign_name"),
@@ -109,21 +177,9 @@ def fetch_campaigns(client):
             "frequency": float(row.get("frequency", 0)),
             "conversions": conversions,
             "cost_per_conversion": round(spend / conversions, 2) if conversions else 0
-        }
+        })
 
-        campaigns.append(campaign)
-        totals["spend"] += campaign["spend"]
-        totals["reach"] += campaign["reach"]
-        totals["impressions"] += campaign["impressions"]
-        totals["clicks"] += campaign["clicks"]
-        totals["conversions"] += campaign["conversions"]
-
-    totals["spend"] = round(totals["spend"], 2)
-    totals["ctr"] = round((totals["clicks"] / totals["impressions"]) * 100, 2) if totals["impressions"] else 0
-    totals["cpc"] = round(totals["spend"] / totals["clicks"], 2) if totals["clicks"] else 0
-    totals["cost_per_conversion"] = round(totals["spend"] / totals["conversions"], 2) if totals["conversions"] else 0
-
-    return sorted(campaigns, key=lambda x: x["spend"], reverse=True), totals
+    return sorted(campaigns, key=lambda x: x["spend"], reverse=True)
 
 def fetch_creatives(client):
     conversion_type = client["primary_conversion_action_type"]
@@ -147,7 +203,6 @@ def fetch_creatives(client):
         return []
 
     creatives = []
-
     for ad in ads:
         insight = {}
         if ad.get("insights", {}).get("data"):
@@ -181,22 +236,28 @@ def fetch_creatives(client):
 
 report = {
     "generated_at": datetime.utcnow().isoformat(),
-    "period": "Last 30 days",
+    "period": PERIOD_LABEL,
+    "date_range": DATE_RANGE,
     "clients": []
 }
 
 for client in CLIENTS:
     print("Fetching", client["name"])
-    campaigns, summary = fetch_campaigns(client)
+
+    daily = fetch_daily_account(client)
+    campaigns = fetch_campaigns(client)
     creatives = fetch_creatives(client)
+    summary = summarise(daily)
 
     report["clients"].append({
         "slug": client["slug"],
         "name": client["name"],
         "brand_color": client.get("brand_color"),
         "conversion_name": client["primary_conversion_name"],
-        "period": "Last 30 days",
+        "period": PERIOD_LABEL,
+        "date_range": DATE_RANGE,
         "summary": summary,
+        "daily": daily,
         "campaigns": campaigns,
         "creatives": creatives
     })
@@ -205,4 +266,5 @@ with open(OUTPUT_DIR / "report.json", "w", encoding="utf-8") as f:
     json.dump(report, f, indent=2)
 
 print("Output:", OUTPUT_DIR / "report.json")
+print("Period:", PERIOD_LABEL)
 print("Done.")
