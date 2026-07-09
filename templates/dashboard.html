@@ -119,14 +119,6 @@
         </div>
       </section>
 
-      <section id="actions" class="panel">
-        <div class="panel-header"><h3>Strategic Recommendations</h3><p>Rule-based recommendations from {{ client.period }}.</p></div>
-        <div class="recommendation-grid">
-          {% for item in recommendations %}
-          <div class="recommendation-card"><span>✓</span><p>{{ item }}</p></div>
-          {% endfor %}
-        </div>
-      </section>
     </main>
   </div>
   <script>window.REPORT_DATA = {{ report_data_json | safe }};</script>
